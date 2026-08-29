@@ -41,7 +41,11 @@ void CPU::execute(u32 inst) {
         i32 imm = signExtend(bits(inst, 31, 20), 12);
         switch (funct3) {
         case 0: rf_.write(rd, rf_.read(rs1) + imm); break;   // addi
-        // TODO: andi / ori / xori / slti / slli ...
+        case 1: rf_.write(rd, rf_.read(rs1) << (imm & 0x1F)); break; // slli
+        case 2: rf_.write(rd, ((i32)rf_.read(rs1) < imm) ? 1 : 0); break; // slti
+        case 3: rf_.write(rd, (rf_.read(rs1) < u32(imm)) ? 1 : 0); break; // sltiu
+        case 4: rf_.write(rd, rf_.read(rs1) ^ imm); break;   // xori   
+        case 6: rf_.write(rd, rf_.read(rs1) | imm); break;   // ori 
         case 7: rf_.write(rd, rf_.read(rs1) & imm); break;   // andi
         default:
             std::cerr << "未实现的 OP-IMM funct3=" << funct3 << "\n";
