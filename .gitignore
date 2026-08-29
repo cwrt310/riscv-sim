@@ -1,0 +1,11 @@
+# 编译产物（本地生成，不进 git）
+build/
+build-vscode/
+*.exe
+*.o
+*.obj
+*.out
+
+# IDE 配置
+.qtcreator/
+.vscode/
