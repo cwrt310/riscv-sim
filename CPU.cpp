@@ -71,6 +71,26 @@ void CPU::execute(u32 inst) {
         rf_.write(rd, imm);
         break;
     }
+    case Op::BRANCH:{
+        int rs2 = int(bits(inst,24,20));
+        i32 imm = signExtend((bits(inst,31,31)<<12) | (bits(inst,7,7)<<11) | (bits(inst,30,25)<<5) | (bits(inst,11,8)<<1),13);
+        switch (funct3) {
+            case 0: // beq
+                if(rf_.read(rs1) == rf_.read(rs2)){
+                    pc_ = pc_ - 4 + imm; // pc_已经+4了，所以这里要减去4
+                }
+                break;
+            case 1: // bne
+                if(rf_.read(rs1) != rf_.read(rs2)){
+                    pc_ = pc_ - 4 + imm;
+                }
+                break;
+            default:
+                std::cerr << "未实现的 BRANCH funct3=" << funct3 << "\n";
+                throw std::runtime_error("unimplemented instruction");
+        }
+        break;
+    }
     // TODO: AUIPC / JAL / JALR / BRANCH / LOAD / STORE
     default:
         std::cerr << "未实现的 opcode=0x" << std::hex << opcode << std::dec << "\n";

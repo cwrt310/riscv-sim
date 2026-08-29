@@ -55,6 +55,12 @@ u32 Assembler::assembleLine(const std::string& line) {
         i32 imm = parseImm(a[1]);
         return (u32(imm) & 0xFFFFF) << 12 | u32(rd) << 7 | Op::LUI;
     }
+    if (mnemonic == "beq" || mnemonic == "bne") {
+        int rs1 = regNum(a[0]), rs2 = regNum(a[1]);
+        i32 imm = parseImm(a[2]);
+        u32 funct3 = (mnemonic == "beq") ? 0u : 1u;
+        return ((imm >> 12) & 0x1) << 31 | ((imm >> 5) & 0x3F) << 25 | u32(rs2) << 20 | u32(rs1) << 15 | funct3 << 12 | ((imm >> 1) & 0xF) << 8 | ((imm >> 11) & 0x1) << 7 | Op::BRANCH;
+    }
     throw std::runtime_error("unknown instruction: " + mnemonic);
 }
 
