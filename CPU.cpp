@@ -58,6 +58,7 @@ void CPU::execute(u32 inst) {
                               ? rf_.read(rs1) - rf_.read(rs2)
                               : rf_.read(rs1) + rf_.read(rs2));
             break;
+        
         // TODO: sll / slt / xor / and / or ...
         default:
             std::cerr << "未实现的 OP funct3=" << funct3 << "\n";

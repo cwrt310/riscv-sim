@@ -13,6 +13,7 @@ int main() {
         "addi x2, x0, 7\n"    // x2 = 7
         "add  x3, x1, x2\n"   // x3 = 12
         "sub  x4, x2, x1\n"   // x4 = 2
+        "andi x5, x3, 0xF\n"    // x5 = 12 & 0xF = 12
     );
     cpu.loadProgram(code);
 
@@ -27,5 +28,6 @@ int main() {
 
     std::cout << "x3=" << cpu.reg(3) << "（期望 12）\n";
     std::cout << "x4=" << cpu.reg(4) << "（期望 2）\n";
+    std::cout << "x5=" << cpu.reg(5) << "（期望 12）\n";
     return 0;
 }

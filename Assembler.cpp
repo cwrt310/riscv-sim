@@ -43,7 +43,7 @@ u32 Assembler::assembleLine(const std::string& line) {
     if (mnemonic == "andi"){
         int rd = regNum(a[0]),rs1 = regNum(a[1]);
         i32 imm = parseImm(a[2]);
-        return (u32(imm)& 0xFFF << 20) | u32(rs1) << 15 | 7u << 12 | u32(rd) << 7 | Op::OP_IMM;
+        return (u32(imm) & 0xFFF) << 20 | u32(rs1) << 15 | 7u << 12 | u32(rd) << 7 | Op::OP_IMM;
     }
     if (mnemonic == "add" || mnemonic == "sub") {
         int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
