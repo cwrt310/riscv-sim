@@ -42,6 +42,21 @@ J 型（opcode=0x6F）：[imm[20|10:1|11|19:12] 20][rd 5][opcode 7]
 
 > ⚠️ **S 型、B 型、J 型的立即数是"打乱的"**（imm 被拆成几段塞进去）。这是 RISC-V 最难记的地方，实现时务必照手册来。
 
+> 💡 **funct3 不是每种格式都有**：R / I / S / B 型有 funct3（bits 14:12）；**U 型**（lui/auipc）和 **J 型**（jal）**没有 funct3**（那几位让给立即数了）。注意 `jalr` 是 **I 型**，所以它有 funct3，值为 0。判断依据是"**格式**"，不是"这个 opcode 下有几条指令"。
+
+**六种格式各自装了谁**（对应关系速查）：
+
+| 格式 | 装的指令 |
+|---|---|
+| R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and |
+| I 型 | addi / slli / slti / sltiu / xori / srli / srai / ori / andi ｜ lw / lh / lb / lbu / lhu ｜ jalr |
+| S 型 | sw / sh / sb |
+| B 型 | beq / bne / blt / bge / bltu / bgeu |
+| U 型 | lui / auipc |
+| J 型 | jal |
+
+> 💡 **第三节的分组是"格式为主 + 少量功能拆分"**：本质按格式（R/I/S/B/U/J）归类；但 Load / Store / Branch / Jump 这几组"格式恰好等于功能"（Load 都是 I 型、Store 都是 S 型、Branch 都是 B 型），就直接用功能名命名。注意 **I 型横跨三处**：运算（addi 等）、Load（lw 等）、jalr。
+
 ---
 
 ## 三、完整指令表（按格式分组）
@@ -142,7 +157,13 @@ J 型（opcode=0x6F）：[imm[20|10:1|11|19:12] 20][rd 5][opcode 7]
 
 ---
 
-## 四、对项目的分级建议
+## 四、进度与分级建议
+
+**当前已实现（12 条，全部测试通过）**：
+
+`addi` `slli` `slti` `sltiu` `xori` `ori` `andi` `add` `sub` `lui` `beq` `bne`
+
+> 已超过及格线（≥10 条），覆盖 R / I / U / B 四种格式；还差 S 型访存（lw/sw）、J 型跳转（jal）、jalr 和 auipc。
 
 **及格线（≥10 条，建议优先实现）**：
 
