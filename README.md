@@ -19,23 +19,28 @@
 | Assembler.* | 汇编文本 ⇆ 机器码 | 汇编器组 |
 | main.cpp + CMakeLists | 演示 + 构建 | 集成负责人 |
 
-## 已实现（作为示范）
+## 已实现
 
-- `addi` / `add` / `sub` / `lui`
-- 单步执行 `step()`、连续执行 `run()`、寄存器堆、小端内存
+**指令（13 条，全部测试通过）**：
 
-## 待补（TODO 都在代码里标好了）
+`addi` `slli` `slti` `sltiu` `xori` `ori` `andi` `add` `sub` `lui` `beq` `bne` `jal`
 
-- **CPU.cpp**：分支 `beq`、跳转 `jal/jalr`、`auipc`、load/store、移位、逻辑运算
-- **Assembler.cpp**：更多指令、标签跳转、伪指令
-- **界面**：Qt 对话框，只调 `cpu.step()/reg()/mem()`
+**测试程序**：斐波那契 F(10)=55 循环程序已跑通（源码在 `workload.txt`）。
+
+**Qt 图形界面**：打开文件 / 单步 / 运行 / 重置 / 帮助按钮；寄存器表（x0~x31）、内存表（随程序大小动态显示）、PC、输出日志。
+
+## 待补
+
+- **CPU.cpp**：访存 `lw/sw`、`jalr`、`auipc`，以及其余指令（移位 / 比较 / 字节半字访存 / 其余分支）
+- **Assembler.cpp**：标签跳转（`loop:`）、伪指令（`mv` / `li` / `j` / `nop`）
+- **界面**：数据通路图 / 流水线动画（加分项）
 
 ## 构建说明
 
 ### 前置依赖
 - 编译器：g++（Windows 用 MinGW，Linux/WSL 自带）
 - 构建工具：CMake ≥ 3.10
-- （可选）Qt 6：仅做图形界面时需要，命令行版不需要
+- Qt 6（Widgets）：图形界面需要
 
 ### Windows（生成 .exe）
 
@@ -55,21 +60,18 @@ cmake --build build
 ./build/riscv-sim
 ```
 
-### 期望输出
+### 界面使用
 
+点「打开」选 `workload.txt` → 点「运行」执行 → 寄存器表看 x2=34、x3=55（斐波那契 F(9)/F(10)）；点「单步」逐条看 PC 和寄存器变化；点「帮助」看已实现指令列表。
+
+### 生成可独立分发的 exe（Release + 打包）
+
+1. Qt Creator 左下角切到 **Release** 编译；
+2. Git Bash 里执行（Qt 装在 E 盘，路径按实际改）：
+
+```bash
+cd /c/Users/cwrt/Desktop/riscv-sim/build/Desktop_Qt_6_11_2_MinGW_64_bit_Release
+"/e/qt/6.11.2/mingw_64/bin/windeployqt.exe" riscv-sim.exe
 ```
-=== 单步执行（前两条）===
-pc=4  x1=5（期望 5）
-pc=8  x2=7（期望 7）
-=== 连续执行剩余指令 ===
-x3=12（期望 12）
-x4=2（期望 2）
-```
 
-### 加 Qt 界面后（第 2-3 周）
-
-在 `CMakeLists.txt` 里加 `find_package(Qt6 COMPONENTS Widgets)` 后重新构建，最后用 `windeployqt` 把 Qt 的 DLL 跟 exe 打包到一起，拷到没装 Qt 的电脑也能跑：
-
-```bat
-windeployqt build\riscv-sim.exe
-```
+3. 打包后整个 `..._Release` 目录（exe + Qt DLL + `platforms/`）即可双击运行、分发到没装 Qt 的电脑。
