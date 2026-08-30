@@ -32,6 +32,10 @@ int main() {
         "bne  x1, x2, 8\n"      // x1!=x2 真 → 跳过下一条
         "addi x17, x0, 1\n"     // 跳过，x17 = 0
         "addi x18, x0, 88\n"    // x18 = 88
+        // ===== 跳转（jal）=====
+        "jal  x19, 8\n"        // 跳到 +8，同时 x19 = 返回地址
+        "addi x20, x0, 1\n"    // 被跳过，x20 = 0
+        "addi x21, x0, 99\n"   // x21 = 99
     );
     cpu.loadProgram(code);
     cpu.run();
@@ -56,5 +60,9 @@ int main() {
     std::cout << "x16 = " << cpu.reg(16) << "（期望 99）\n";
     std::cout << "x17 = " << cpu.reg(17) << "（期望 0，bne 跳过了）\n";
     std::cout << "x18 = " << cpu.reg(18) << "（期望 88）\n";
+    std::cout << "=== 跳转 ===\n";
+    std::cout << "x19 = " << cpu.reg(19) << "（期望 84，jal 的返回地址）\n";
+    std::cout << "x20 = " << cpu.reg(20) << "（期望 0，jal 跳过了）\n";
+    std::cout << "x21 = " << cpu.reg(21) << "（期望 99）\n";
     return 0;
 }

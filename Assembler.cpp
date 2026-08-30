@@ -86,6 +86,11 @@ u32 Assembler::assembleLine(const std::string& line) {
         i32 imm = parseImm(a[2]);
         return (u32(imm) & 0xFFF) << 20 | u32(rs1) << 15 | 6u << 12 | u32(rd) << 7 | Op::OP_IMM;
     }
+    if (mnemonic == "jal") {
+        int rd = regNum(a[0]);
+        i32 imm = parseImm(a[1]);
+        return ((imm >> 20) & 0x1) << 31 | ((imm >> 1) & 0x3FF) << 21 | ((imm >> 11) & 0x1) << 20 | ((imm >> 12) & 0xFF) << 12 | u32(rd) << 7 | Op::JAL;
+    }
     throw std::runtime_error("unknown instruction: " + mnemonic);
 }
 

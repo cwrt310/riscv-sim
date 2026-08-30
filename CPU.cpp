@@ -95,6 +95,12 @@ void CPU::execute(u32 inst) {
         }
         break;
     }
+    case Op::JAL:{
+        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1) | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12),21);
+        rf_.write(rd, pc_ );
+        pc_ = pc_ - 4 + imm;
+        break;
+    }
     // TODO: AUIPC / JAL / JALR / BRANCH / LOAD / STORE
     default:
         std::cerr << "未实现的 opcode=0x" << std::hex << opcode << std::dec << "\n";
