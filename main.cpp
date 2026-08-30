@@ -8,7 +8,7 @@ int main() {
     CPU cpu;
 
     auto code = as.assemble(
-        // ===== 算术 / 逻辑 / 移位（顺序执行）=====
+        /*// ===== 算术 / 逻辑 / 移位（顺序执行）=====
         "addi x1, x0, 5\n"      // x1 = 5
         "addi x2, x0, 3\n"      // x2 = 3
         "add  x3, x1, x2\n"     // x3 = 8
@@ -35,12 +35,21 @@ int main() {
         // ===== 跳转（jal）=====
         "jal  x19, 8\n"        // 跳到 +8，同时 x19 = 返回地址
         "addi x20, x0, 1\n"    // 被跳过，x20 = 0
-        "addi x21, x0, 99\n"   // x21 = 99
+        "addi x21, x0, 99\n"   // x21 = 99*/
+        "addi x1, x0, 9\n"
+        "addi x2, x0, 0\n"
+        "addi x3, x0, 1\n"
+        "beq x1,x0,24\n"
+        "add x4,x3,x2\n"
+        "addi x2,x3,0\n"
+        "addi x3,x4,0\n"
+        "addi x1,x1,-1\n"
+        "jal x0,-20\n"
     );
     cpu.loadProgram(code);
     cpu.run();
 
-    // ===== 输出与期望值对照 =====
+    /*// ===== 输出与期望值对照 =====
     std::cout << "=== 算术 / 逻辑 / 移位 ===\n";
     std::cout << "x3  = " << cpu.reg(3)  << "（期望 8）\n";
     std::cout << "x4  = " << cpu.reg(4)  << "（期望 2）\n";
@@ -63,6 +72,8 @@ int main() {
     std::cout << "=== 跳转 ===\n";
     std::cout << "x19 = " << cpu.reg(19) << "（期望 84，jal 的返回地址）\n";
     std::cout << "x20 = " << cpu.reg(20) << "（期望 0，jal 跳过了）\n";
-    std::cout << "x21 = " << cpu.reg(21) << "（期望 99）\n";
+    std::cout << "x21 = " << cpu.reg(21) << "（期望 99）\n";*/
+    std::cout << "x2 = " << cpu.reg(2) << "（期望 34 = F(9)）\n";
+    std::cout << "x3 = " << cpu.reg(3) << "（期望 55 = F(10)）\n";
     return 0;
 }
