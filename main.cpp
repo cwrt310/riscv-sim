@@ -1,79 +1,154 @@
-#include <cstdint>
+#include <QApplication>
+#include <QWidget>
+#include <QPushButton>
+#include <QLabel>
+#include <QPlainTextEdit>
+#include <QTextEdit>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
+#include <QMessageBox>
 #include "CPU.h"
 #include "Assembler.h"
-#include <iostream>
 
-int main() {
-    Assembler as;
+int main(int argc, char* argv[]) {
+    QApplication app(argc, argv);
+
     CPU cpu;
+    Assembler as;
+    bool loaded = false;          // 程序是否已加载（单步要靠它判断）
 
-    auto code = as.assemble(
-        /*// ===== 算术 / 逻辑 / 移位（顺序执行）=====
-        "addi x1, x0, 5\n"      // x1 = 5
-        "addi x2, x0, 3\n"      // x2 = 3
-        "add  x3, x1, x2\n"     // x3 = 8
-        "sub  x4, x1, x2\n"     // x4 = 2
-        "andi x5, x1, 1\n"      // x5 = 1
-        "ori  x6, x1, 8\n"      // x6 = 13
-        "xori x7, x1, 0xF\n"    // x7 = 10
-        "slli x8, x1, 2\n"      // x8 = 20
-        "slti x9, x1, 10\n"     // x9 = 1（5<10 真）
-        "slti x10, x1, 3\n"     // x10 = 0（5<3 假）
-        "lui  x11, 0x12345\n"   // x11 = 0x12345000
-        "addi x12, x0, -1\n"    // x12 = -1（0xFFFFFFFF）
-        "slti x13, x12, 1\n"    // x13 = 1（有符号：-1 < 1）
-        "sltiu x14, x12, 1\n"   // x14 = 0（无符号：4294967295 < 1）
+    // ===== 窗口 + 控件（第②步骨架）=====
+    QWidget window;
+    window.setWindowTitle("RISC-V 模拟器");
+    window.resize(1000, 700);
 
-        // ===== 分支（beq/bne）=====
-        "beq  x1, x1, 8\n"      // x1==x1 真 → 跳过下一条
-        "addi x15, x0, 1\n"     // 跳过，x15 = 0
-        "addi x16, x0, 99\n"    // x16 = 99
+    QPushButton* btnOpen  = new QPushButton("打开");
+    QPushButton* btnStep  = new QPushButton("单步");
+    QPushButton* btnRun   = new QPushButton("运行");
+    QPushButton* btnReset = new QPushButton("重置");
+    QPushButton* btnHelp  = new QPushButton("帮助");
+    QLabel* lblPC = new QLabel("PC: 0x00000000");
 
-        "bne  x1, x2, 8\n"      // x1!=x2 真 → 跳过下一条
-        "addi x17, x0, 1\n"     // 跳过，x17 = 0
-        "addi x18, x0, 88\n"    // x18 = 88
-        // ===== 跳转（jal）=====
-        "jal  x19, 8\n"        // 跳到 +8，同时 x19 = 返回地址
-        "addi x20, x0, 1\n"    // 被跳过，x20 = 0
-        "addi x21, x0, 99\n"   // x21 = 99*/
-        "addi x1, x0, 9\n"
-        "addi x2, x0, 0\n"
-        "addi x3, x0, 1\n"
-        "beq x1,x0,24\n"
-        "add x4,x3,x2\n"
-        "addi x2,x3,0\n"
-        "addi x3,x4,0\n"
-        "addi x1,x1,-1\n"
-        "jal x0,-20\n"
-    );
-    cpu.loadProgram(code);
-    cpu.run();
+    QHBoxLayout* topBar = new QHBoxLayout;
+    topBar->addWidget(btnOpen);
+    topBar->addWidget(btnStep);
+    topBar->addWidget(btnRun);
+    topBar->addWidget(btnReset);
+    topBar->addWidget(btnHelp);
+    topBar->addStretch();
+    topBar->addWidget(lblPC);
 
-    /*// ===== 输出与期望值对照 =====
-    std::cout << "=== 算术 / 逻辑 / 移位 ===\n";
-    std::cout << "x3  = " << cpu.reg(3)  << "（期望 8）\n";
-    std::cout << "x4  = " << cpu.reg(4)  << "（期望 2）\n";
-    std::cout << "x5  = " << cpu.reg(5)  << "（期望 1，andi）\n";
-    std::cout << "x6  = " << cpu.reg(6)  << "（期望 13，ori）\n";
-    std::cout << "x7  = " << cpu.reg(7)  << "（期望 10，xori）\n";
-    std::cout << "x8  = " << cpu.reg(8)  << "（期望 20，slli）\n";
-    std::cout << "x9  = " << cpu.reg(9)  << "（期望 1，slti 真）\n";
-    std::cout << "x10 = " << cpu.reg(10) << "（期望 0，slti 假）\n";
-    std::cout << "x11 = 0x" << std::hex << cpu.reg(11) << std::dec << "（期望 0x12345000，lui）\n";
-    std::cout << "x12 = " << cpu.reg(12) << "（期望 0xFFFFFFFF = -1）\n";
-    std::cout << "x13 = " << cpu.reg(13) << "（期望 1，slti 有符号）\n";
-    std::cout << "x14 = " << cpu.reg(14) << "（期望 0，sltiu 无符号）\n";
+    QPlainTextEdit* codeEdit = new QPlainTextEdit;
+    codeEdit->setPlaceholderText("在这里输入汇编，例如：\naddi x1, x0, 5");
 
-    std::cout << "=== 分支 ===\n";
-    std::cout << "x15 = " << cpu.reg(15) << "（期望 0，beq 跳过了）\n";
-    std::cout << "x16 = " << cpu.reg(16) << "（期望 99）\n";
-    std::cout << "x17 = " << cpu.reg(17) << "（期望 0，bne 跳过了）\n";
-    std::cout << "x18 = " << cpu.reg(18) << "（期望 88）\n";
-    std::cout << "=== 跳转 ===\n";
-    std::cout << "x19 = " << cpu.reg(19) << "（期望 84，jal 的返回地址）\n";
-    std::cout << "x20 = " << cpu.reg(20) << "（期望 0，jal 跳过了）\n";
-    std::cout << "x21 = " << cpu.reg(21) << "（期望 99）\n";*/
-    std::cout << "x2 = " << cpu.reg(2) << "（期望 34 = F(9)）\n";
-    std::cout << "x3 = " << cpu.reg(3) << "（期望 55 = F(10)）\n";
-    return 0;
+    QTableWidget* regTable = new QTableWidget(32, 2);
+    regTable->setHorizontalHeaderLabels({"寄存器", "值"});
+
+    QTableWidget* memTable = new QTableWidget(0, 2);   // 初始 0 行，加载后按程序大小设置
+    memTable->setHorizontalHeaderLabels({"地址", "数据"});
+
+    QTextEdit* logEdit = new QTextEdit;
+    logEdit->setReadOnly(true);
+
+    QHBoxLayout* middle = new QHBoxLayout;
+    middle->addWidget(codeEdit, 1);
+    middle->addWidget(regTable, 1);
+
+    QHBoxLayout* bottom = new QHBoxLayout;
+    bottom->addWidget(memTable, 1);
+    bottom->addWidget(logEdit, 1);
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(&window);
+    mainLayout->addLayout(topBar);
+    mainLayout->addLayout(middle, 1);
+    mainLayout->addLayout(bottom, 1);
+
+    // ===== 初始化寄存器表（内存表等加载后再填）=====
+    for (int i = 0; i < 32; ++i) {
+        regTable->setItem(i, 0, new QTableWidgetItem(QString("x%1").arg(i)));
+        regTable->setItem(i, 1, new QTableWidgetItem("0x00000000"));
+    }
+
+    // ===== 刷新：把 CPU 状态填进界面 =====
+    auto refresh = [&]() {
+        for (int i = 0; i < 32; ++i)
+            regTable->item(i, 1)->setText(QString("0x%1").arg(cpu.reg(i), 8, 16, QLatin1Char('0')));
+        lblPC->setText(QString("PC: 0x%1").arg(cpu.pc(), 8, 16, QLatin1Char('0')));
+        for (int i = 0; i < memTable->rowCount(); ++i)
+            memTable->setItem(i, 1, new QTableWidgetItem(QString("0x%1").arg(cpu.mem().loadWord(i * 4), 8, 16, QLatin1Char('0'))));
+    };
+
+    // ===== 加载：汇编 + 装载（不执行）=====
+    auto load = [&]() {
+        auto code = as.assemble(codeEdit->toPlainText().toStdString());
+        cpu.reset();
+        cpu.loadProgram(code);
+        loaded = true;
+        memTable->setRowCount(int(code.size()));           // 内存表行数 = 指令条数
+        for (int i = 0; i < int(code.size()); ++i)         // 填地址列
+            memTable->setItem(i, 0, new QTableWidgetItem(
+                QString("0x%1").arg(i * 4, 2, 16, QLatin1Char('0'))));
+        logEdit->append(QString("已加载 %1 条指令").arg(code.size()));
+        refresh();
+    };
+
+    // ===== 按钮的逻辑 =====
+    QObject::connect(btnOpen, &QPushButton::clicked, [&]() {
+        QString path = QFileDialog::getOpenFileName(&window, "打开汇编文件", "", "文本文件 (*.txt *.asm);;所有文件 (*)");
+        if (path.isEmpty()) return;                    // 用户取消了
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            logEdit->append("无法打开文件：" + path);
+            return;
+        }
+        QTextStream in(&file);
+        codeEdit->setPlainText(in.readAll());           // 文件内容填进输入框
+        file.close();
+        logEdit->append("已打开：" + path);
+    });
+
+    QObject::connect(btnRun, &QPushButton::clicked, [&]() {
+        load();
+        cpu.run();
+        refresh();
+        logEdit->append("程序执行完成");
+    });
+
+    QObject::connect(btnStep, &QPushButton::clicked, [&]() {
+        if (!loaded) load();      // 还没加载就先加载
+        if (cpu.finished()) {     // 程序已执行完，再单步会越界读垃圾
+            logEdit->append("程序已执行完，点「重置」重新开始");
+            return;
+        }
+        cpu.step();               // 只走一条
+        refresh();
+    });
+
+    QObject::connect(btnReset, &QPushButton::clicked, [&]() {
+        cpu.reset();
+        loaded = false;
+        refresh();
+        logEdit->clear();
+    });
+
+    QObject::connect(btnHelp, &QPushButton::clicked, [&]() {
+        QMessageBox::information(&window, "已实现的指令",
+            "当前已实现 13 条指令（RV32I 子集）：\n\n"
+            "【算术】add、sub、addi\n"
+            "【逻辑】andi、ori、xori\n"
+            "【移位】slli\n"
+            "【比较】slti、sltiu\n"
+            "【高位立即数】lui\n"
+            "【分支】beq、bne\n"
+            "【跳转】jal\n\n"
+            "还没实现：lw/sw（访存）、jalr、auipc 等");
+    });
+
+    window.show();
+    return app.exec();
 }

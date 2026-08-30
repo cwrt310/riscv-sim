@@ -25,6 +25,7 @@ public:
     u32 pc() const { return pc_; }
     u32 reg(int n) const { return rf_.read(n); }
     const Memory& mem() const { return mem_; }
+    bool finished() const { return pc_ >= progEnd_; }   // 程序是否已执行完
 
 
 };
