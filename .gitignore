@@ -5,7 +5,7 @@ build-vscode/
 *.o
 *.obj
 *.out
-*。zip
+*.zip
 # IDE 配置
 .qtcreator/
 .vscode/
