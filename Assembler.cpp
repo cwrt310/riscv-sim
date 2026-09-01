@@ -91,6 +91,78 @@ u32 Assembler::assembleLine(const std::string& line) {
         i32 imm = parseImm(a[1]);
         return ((imm >> 20) & 0x1) << 31 | ((imm >> 1) & 0x3FF) << 21 | ((imm >> 11) & 0x1) << 20 | ((imm >> 12) & 0xFF) << 12 | u32(rd) << 7 | Op::JAL;
     }
+    if (mnemonic == "lw") {
+        int rd = regNum(a[0]);
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid lw format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        return (u32(imm) & 0xFFF) << 20 | u32(rs1) << 15 | 2u << 12 | u32(rd) << 7 | Op::LOAD;
+    }
+    if (mnemonic == "sw") {
+        int rs2 = regNum(a[0]);
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid sw format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        u32 u = u32(imm);
+        return ((u >> 5) & 0x7F) << 25 |    // imm[11:5] → bits 31:25
+                u32(rs2) << 20 |             // rs2 → bits 24:20
+                u32(rs1) << 15 |             // rs1 → bits 19:15
+                2u << 12 |                   // funct3=2 → bits 14:12
+                ((u & 0x1F) << 7) |          // imm[4:0] → bits 11:7
+                Op::STORE;
+    }
+    if (mnemonic == "lb"){
+        int rd = regNum(a[0]);
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid lb format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        return (u32(imm) & 0xFFF) << 20 | u32(rs1) << 15 | 0u << 12 | u32(rd) << 7 | Op::LOAD;
+    }
+    if (mnemonic == "sb"){
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid sb format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        int rs2 = regNum(a[0]);
+        u32 u = u32(imm);
+        return ((u >> 5) & 0x7F) << 25 |    // imm[11:5] → bits 31:25
+                u32(rs2) << 20 |             // rs2 → bits 24:20
+                u32(rs1) << 15 |             // rs1 → bits 19:15
+                0u << 12 |                   // funct3=0 → bits 14:12
+                ((u & 0x1F) << 7) |          // imm[4:0] → bits 11:7
+                Op::STORE;
+    }
+    if (mnemonic == "lh"){
+        int rd = regNum(a[0]);
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid lh format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        return (u32(imm) & 0xFFF) << 20 | u32(rs1) << 15 | 1u << 12 | u32(rd) << 7 | Op::LOAD;
+    }
+    if (mnemonic == "sh"){
+        std::string offsetBase = a[1];
+        size_t pos = offsetBase.find('(');
+        if (pos == std::string::npos) throw std::runtime_error("invalid sh format");
+        i32 imm = parseImm(offsetBase.substr(0, pos));
+        int rs1 = regNum(offsetBase.substr(pos + 1, offsetBase.length() - pos - 2));
+        int rs2 = regNum(a[0]);
+        u32 u = u32(imm);
+        return ((u >> 5) & 0x7F) << 25 |    // imm[11:5] → bits 31:25
+                u32(rs2) << 20 |             // rs2 → bits 24:20
+                u32(rs1) << 15 |             // rs1 → bits 19:15
+                1u << 12 |                   // funct3=1 → bits 14:12
+                ((u & 0x1F) << 7) |          // imm[4:0] → bits 11:7
+                Op::STORE;
+    }
     throw std::runtime_error("unknown instruction: " + mnemonic);
 }
 

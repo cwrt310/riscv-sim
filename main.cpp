@@ -136,17 +136,19 @@ int main(int argc, char* argv[]) {
         logEdit->clear();
     });
 
-    QObject::connect(btnHelp, &QPushButton::clicked, [&]() {
-        QMessageBox::information(&window, "已实现的指令",
-            "当前已实现 13 条指令（RV32I 子集）：\n\n"
-            "【算术】add、sub、addi\n"
-            "【逻辑】andi、ori、xori\n"
-            "【移位】slli\n"
-            "【比较】slti、sltiu\n"
-            "【高位立即数】lui\n"
-            "【分支】beq、bne\n"
-            "【跳转】jal\n\n"
-            "还没实现：lw/sw（访存）、jalr、auipc 等");
+   QObject::connect(btnHelp, &QPushButton::clicked, [&]() {
+    QMessageBox::information(&window, "已实现的指令",
+        "当前已实现 19 条指令（RV32I 子集）：\n\n"
+        "【算术】add、sub、addi\n"
+        "【逻辑】andi、ori、xori\n"
+        "【移位】slli\n"
+        "【比较】slti、sltiu\n"
+        "【高位立即数】lui\n"
+        "【分支】beq、bne\n"
+        "【跳转】jal\n"
+        "【访存·读】lw、lb、lh\n"
+        "【访存·写】sw、sb、sh\n\n"
+        "还没实现：jalr、auipc、sll/srl/sra、slt/sltu、lbu/lhu、blt/bge/bltu/bgeu 等");
     });
 
     window.show();

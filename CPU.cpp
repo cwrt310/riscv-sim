@@ -101,6 +101,43 @@ void CPU::execute(u32 inst) {
         pc_ = pc_ - 4 + imm;
         break;
     }
+    case Op::STORE:{
+        int rs2 = int(bits(inst,24,20));
+        i32 imm = signExtend((bits(inst,31,25)<<5)|(bits(inst,11,7)),12);
+        switch (funct3) {
+            case 0: // sb
+                mem_.storeByte(rf_.read(rs1) + u32(imm), u8(rf_.read(rs2) & 0xFF));
+                break;
+            case 1: // sh
+                mem_.storeHalf(rf_.read(rs1) + u32(imm), u16(rf_.read(rs2) & 0xFFFF));
+                break;
+            case 2: // sw
+                mem_.storeWord(rf_.read(rs1) + u32(imm), u32(rf_.read(rs2)));
+                break;
+            default:
+                std::cerr << "未实现的 STORE funct3=" << funct3 << "\n";
+                throw std::runtime_error("unimplemented instruction");
+        }
+        break;
+    }
+    case Op::LOAD:{
+        i32 imm = signExtend(bits(inst,31,20),12);
+        switch (funct3) {
+            case 0: // lb
+                rf_.write(rd, signExtend(mem_.loadByte(rf_.read(rs1) + u32(imm)),8));
+                break;
+            case 1: // lh
+                rf_.write(rd, signExtend(mem_.loadHalf(rf_.read(rs1) + u32(imm)),16));
+                break;
+            case 2: // lw
+                rf_.write(rd, mem_.loadWord(rf_.read(rs1) + u32(imm)));
+                break;
+            default:
+                std::cerr << "未实现的 LOAD funct3=" << funct3 << "\n";
+                throw std::runtime_error("unimplemented instruction");
+        }
+        break;
+    }
     // TODO: AUIPC / JAL / JALR / BRANCH / LOAD / STORE
     default:
         std::cerr << "未实现的 opcode=0x" << std::hex << opcode << std::dec << "\n";
