@@ -45,6 +45,7 @@ void CPU::execute(u32 inst) {
         case 2: rf_.write(rd, ((i32)rf_.read(rs1) < imm) ? 1 : 0); break; // slti
         case 3: rf_.write(rd, (rf_.read(rs1) < u32(imm)) ? 1 : 0); break; // sltiu
         case 4: rf_.write(rd, rf_.read(rs1) ^ imm); break;   // xori   
+        case 5: rf_.write(rd, rf_.read(rs1) >> (imm & 0x1F)); break; // srli
         case 6: rf_.write(rd, rf_.read(rs1) | imm); break;   // ori 
         case 7: rf_.write(rd, rf_.read(rs1) & imm); break;   // andi
         default:
@@ -63,6 +64,25 @@ void CPU::execute(u32 inst) {
                               : rf_.read(rs1) + rf_.read(rs2));
             break;
         
+        case 1: // sll
+            rf_.write(rd, rf_.read(rs1) << (rf_.read(rs2) & 0x1F));
+            break;
+        case 4: // xor
+            rf_.write(rd, rf_.read(rs1) ^ rf_.read(rs2));
+            break;
+        case 5: // srl
+            if (funct7 != 0x00) {
+                std::cerr << "未实现 sra（算术右移）\n";
+                throw std::runtime_error("unimplemented instruction");
+            }
+            rf_.write(rd, rf_.read(rs1) >> (rf_.read(rs2) & 0x1F));
+            break;
+        case 6: // or
+            rf_.write(rd, rf_.read(rs1) | rf_.read(rs2));
+            break;
+        case 7: // and
+            rf_.write(rd, rf_.read(rs1) & rf_.read(rs2));
+            break;
         // TODO: sll / slt / xor / and / or ...
         default:
             std::cerr << "未实现的 OP funct3=" << funct3 << "\n";
