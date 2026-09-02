@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
     };
 
     // ===== 加载：汇编 + 装载（不执行）=====
-    auto load = [&]() {
+    auto load = [&]() { try {
         auto code = as.assemble(codeEdit->toPlainText().toStdString());
         cpu.reset();
         cpu.loadProgram(code);
@@ -94,7 +94,10 @@ int main(int argc, char* argv[]) {
             memTable->setItem(i, 0, new QTableWidgetItem(
                 QString("0x%1").arg(i * 4, 2, 16, QLatin1Char('0'))));
         logEdit->append(QString("已加载 %1 条指令").arg(code.size()));
-        refresh();
+        refresh();}
+        catch (const std::exception& e) {
+            logEdit->append(QString("汇编错误：%1").arg(e.what()));
+        }
     };
 
     // ===== 按钮的逻辑 =====
@@ -113,20 +116,26 @@ int main(int argc, char* argv[]) {
     });
 
     QObject::connect(btnRun, &QPushButton::clicked, [&]() {
-        load();
+        try{ load();
         cpu.run();
         refresh();
-        logEdit->append("程序执行完成");
+        logEdit->append("程序执行完成");}
+        catch(const std::exception& e){
+            logEdit->append(QString("运行时错误：%1").arg(e.what()));
+        }
     });
 
     QObject::connect(btnStep, &QPushButton::clicked, [&]() {
-        if (!loaded) load();      // 还没加载就先加载
+        try{if (!loaded) load();      // 还没加载就先加载
         if (cpu.finished()) {     // 程序已执行完，再单步会越界读垃圾
             logEdit->append("程序已执行完，点「重置」重新开始");
             return;
         }
         cpu.step();               // 只走一条
-        refresh();
+        refresh();}
+        catch(const std::exception& e){
+            logEdit->append(QString("运行时错误：%1").arg(e.what()));
+        }
     });
 
     QObject::connect(btnReset, &QPushButton::clicked, [&]() {
