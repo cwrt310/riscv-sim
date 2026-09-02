@@ -12,8 +12,19 @@
 #include <QFile>
 #include <QTextStream>
 #include <QMessageBox>
+#include <QPainter>
 #include "CPU.h"
 #include "Assembler.h"
+
+// 数据通路图控件：继承 QWidget，重写 paintEvent 自己画
+class DatapathWidget : public QWidget {
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter p(this);
+        p.drawRect(20, 20, 100, 50);      // PC 方块
+        p.drawText(55, 48, "PC");         // 写 PC
+    }
+};
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
@@ -67,6 +78,10 @@ int main(int argc, char* argv[]) {
     mainLayout->addLayout(topBar);
     mainLayout->addLayout(middle, 1);
     mainLayout->addLayout(bottom, 1);
+    // 数据通路图       
+    DatapathWidget* datapath = new DatapathWidget;
+    datapath->setMinimumHeight(200);
+    mainLayout->addWidget(datapath);  
 
     // ===== 初始化寄存器表（内存表等加载后再填）=====
     for (int i = 0; i < 32; ++i) {
