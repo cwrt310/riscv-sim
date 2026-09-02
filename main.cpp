@@ -21,8 +21,34 @@ class DatapathWidget : public QWidget {
 protected:
     void paintEvent(QPaintEvent*) override {
         QPainter p(this);
-        p.drawRect(20, 20, 100, 50);      // PC 方块
-        p.drawText(55, 48, "PC");         // 写 PC
+
+        // ---- 第一行：PC → 指令存储器 → 译码 ----
+        p.drawRect(20, 30, 80, 40);
+        p.drawText(45, 55, "PC");
+
+        p.drawRect(140, 30, 130, 40);
+        p.drawText(160, 55, "指令存储器");
+
+        p.drawRect(310, 30, 80, 40);
+        p.drawText(340, 55, "译码");
+
+        // ---- 第二行：寄存器堆 → ALU → 数据存储器 ----
+        p.drawRect(310, 130, 90, 40);
+        p.drawText(330, 155, "寄存器堆");
+
+        p.drawRect(450, 130, 80, 40);
+        p.drawText(480, 155, "ALU");
+
+        p.drawRect(580, 130, 130, 40);
+        p.drawText(600, 155, "数据存储器");
+
+        // ---- 连线 ----
+        p.drawLine(100, 50, 140, 50);      // PC → 指令存储器
+        p.drawLine(270, 50, 310, 50);      // 指令存储器 → 译码
+        p.drawLine(350, 70, 350, 130);     // 译码 ↓ 寄存器堆
+        p.drawLine(400, 150, 450, 150);    // 寄存器堆 → ALU
+        p.drawLine(530, 150, 580, 150);    // ALU → 数据存储器
+        p.drawLine(350, 70, 490, 130);     // 译码 ↘ ALU
     }
 };
 
