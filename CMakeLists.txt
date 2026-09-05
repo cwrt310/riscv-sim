@@ -13,6 +13,9 @@ add_executable(riscv-sim
     Memory.cpp
     RegisterFile.cpp
     Assembler.cpp
+    Assembler.h
+    common.h CPU.h Memory.h
+    mainwindow.h mainwindow.cpp mainwindow.ui
 )
 
 target_link_libraries(riscv-sim PRIVATE Qt6::Widgets)
