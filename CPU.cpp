@@ -11,6 +11,7 @@ void CPU::loadProgram(const std::vector<u32>& code, u32 base) {
 void CPU::reset() {
     pc_ = 0;
     progEnd_ = 0;
+    lastInst_ = 0;         // 清掉，界面高亮跟着熄灭
     rf_ = RegisterFile();
     mem_ = Memory();
 }
@@ -21,6 +22,7 @@ u32 CPU::fetch() const {
 
 void CPU::step() {
     u32 inst = fetch();
+    lastInst_ = inst;  // 记下这条指令，界面好高亮它走过的部件
     pc_ += 4;          // 先让 PC 指向下一条，再执行（RISC-V 约定）
     execute(inst);
 }

@@ -12,6 +12,8 @@
 #include <QAction>
 #include <QCheckBox>
 #include <QStatusBar>
+#include <QDoubleSpinBox>
+#include <QTimer>
 #include "CPU.h"
 #include "Assembler.h"
 #include <QHeaderView>
@@ -22,25 +24,29 @@ QT_END_NAMESPACE
 class DatapathWidget : public QWidget {
     Q_OBJECT
 public:
-    enum Stage {
-        STAGE_PC,
-        STAGE_IF,
-        STAGE_ID,
-        STAGE_REG,
-        STAGE_EX,
-        STAGE_MEM,
-        STAGE_WB,
-        STAGE_NONE
+    // 位掩码：每一位代表一个部件，一次可同时亮多个
+    enum StageFlag {
+        STAGE_NONE = 0,
+        STAGE_PC   = 1 << 0,
+        STAGE_IF   = 1 << 1,
+        STAGE_ID   = 1 << 2,
+        STAGE_REG  = 1 << 3,
+        STAGE_EX   = 1 << 4,
+        STAGE_MEM  = 1 << 5,
+        STAGE_WB   = 1 << 6,
+        STAGE_PCWR = 1 << 7,   // PC 被改写（分支/跳转）
     };
 
     explicit DatapathWidget(QWidget *parent = nullptr);
-    void setHighlightStage(Stage stage);
+    void setHighlightMask(uint32_t mask);
+    void setInstText(const QString& text);   // 图顶部显示「第几拍 + 当前指令」
 
 protected:
     void paintEvent(QPaintEvent*) override;
 
 private:
-    Stage m_highlightStage = STAGE_NONE;
+    uint32_t m_mask = STAGE_NONE;
+    QString  m_instText;
 };
 
 class MainWindow : public QMainWindow
@@ -77,6 +83,8 @@ private slots:
     void onAbout();
 
     void refreshUI();
+    void onTimerTick();             // 运行定时器：每拍执行一条
+    uint32_t datapathMask() const;  // 按当前指令算该亮哪些部件
 
 private:
     // 后端
@@ -99,6 +107,11 @@ private:
     QTableWidget *memTable;
     QTextEdit *logEdit;
     DatapathWidget *datapath;
+
+    // 运行速度控制
+    QDoubleSpinBox *speedBox;      // 每秒执行几条指令（直观，不用算毫秒）
+    QTimer *runTimer;
+    int  tickCount = 0;            // 已执行拍数，给数据通路图上的提示用
 
     // 视图切换用
     QWidget *regContainer;

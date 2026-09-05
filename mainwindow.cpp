@@ -14,12 +14,19 @@
 DatapathWidget::DatapathWidget(QWidget *parent)
     : QWidget(parent)
 {
-    setMinimumHeight(200);
+    setMinimumHeight(210);
+    setMinimumWidth(900);
 }
 
-void DatapathWidget::setHighlightStage(Stage stage)
+void DatapathWidget::setHighlightMask(uint32_t mask)
 {
-    m_highlightStage = stage;
+    m_mask = mask;
+    update();
+}
+
+void DatapathWidget::setInstText(const QString& text)
+{
+    m_instText = text;
     update();
 }
 
@@ -33,27 +40,29 @@ void DatapathWidget::paintEvent(QPaintEvent*) {
     QColor lineColor(120, 120, 120);
     QColor highlightColor(255, 200, 100);
 
-    int boxW = 110;
-    int boxH = 50;
-    int y = 50;
-    int spacing = 30;
+    // 6 个部件排成一行，宽度按窗口自适应
+    const int n = 6;
+    int marginL = 14, marginR = 14;
+    int avail = width() - marginL - marginR;
+    int boxW = qBound(80, (avail - (n - 1) * 26) / n, 130);
+    int spacing = (n > 1) ? (avail - boxW * n) / (n - 1) : 0;
+    if (spacing < 18) spacing = 18;
+    int boxH = 52;
+    int col = boxW + spacing;
 
-    int xPC = 20;
-    int xIF = xPC + boxW + spacing;
-    int xID = xIF + boxW + spacing;
-    int xREG = xID + boxW + spacing;
-    int xEX = xREG + boxW + spacing;
-    int xMEM = xEX + boxW + spacing;
-    int xWB = xMEM + boxW + spacing;
-
+    int y = 78;                    // 唯一一行的纵坐标
     int midY = y + boxH / 2;
 
-    auto isHighlight = [&](Stage s) {
-        return m_highlightStage == s;
-    };
+    int xPC  = marginL;
+    int xIF  = xPC  + col;
+    int xID  = xIF  + col;
+    int xREG = xID  + col;
+    int xEX  = xREG + col;
+    int xMEM = xEX  + col;
 
-    auto drawBox = [&](int x, int y, int w, int h, const QString& label,
-                       bool highlight) {
+    auto isHighlight = [&](uint32_t s) { return (m_mask & s) != 0; };
+
+    auto drawBox = [&](int x, const QString& label, bool highlight) {
         if (highlight) {
             p.setBrush(highlightColor);
             p.setPen(QPen(QColor(200, 120, 30), 3));
@@ -61,64 +70,172 @@ void DatapathWidget::paintEvent(QPaintEvent*) {
             p.setBrush(normalColor);
             p.setPen(QPen(borderColor, 2));
         }
-        p.drawRect(x, y, w, h);
+        p.drawRect(x, y, boxW, boxH);
         p.setPen(QPen(textColor, 1));
-        p.drawText(x + (w - QFontMetrics(p.font()).horizontalAdvance(label)) / 2,
-                   y + h / 2 + 6, label);
+        p.drawText(x + (boxW - QFontMetrics(p.font()).horizontalAdvance(label)) / 2,
+                   y + boxH / 2 + 5, label);
     };
 
-    auto drawArrowH = [&](int x1, int x2) {
+    auto drawArrowH = [&](int x1, int x2, int yy, bool highlight) {
+        QColor c = highlight ? highlightColor : lineColor;
         int dir = (x2 > x1) ? 1 : -1;
-        int tipX = x2 - dir * 8;
-        p.setPen(QPen(lineColor, 2));
-        p.drawLine(x1, midY, tipX, midY);
+        p.setPen(QPen(c, highlight ? 3 : 2));
+        p.drawLine(x1, yy, x2 - dir * 8, yy);
         QPolygon arrow;
-        arrow << QPoint(x2, midY)
-              << QPoint(x2 - dir * 10, midY - 6)
-              << QPoint(x2 - dir * 10, midY + 6);
-        p.setBrush(lineColor);
+        arrow << QPoint(x2, yy)
+              << QPoint(x2 - dir * 10, yy - 6)
+              << QPoint(x2 - dir * 10, yy + 6);
+        p.setBrush(c);
         p.drawPolygon(arrow);
     };
 
-    drawBox(xPC, y, boxW, boxH, "PC", isHighlight(STAGE_PC));
-    drawBox(xIF, y, boxW, boxH, "指令存储器", isHighlight(STAGE_IF));
-    drawBox(xID, y, boxW, boxH, "译码", isHighlight(STAGE_ID));
-    drawBox(xREG, y, boxW, boxH, "寄存器堆", isHighlight(STAGE_REG));
-    drawBox(xEX, y, boxW, boxH, "ALU", isHighlight(STAGE_EX));
-    drawBox(xMEM, y, boxW, boxH, "数据存储器", isHighlight(STAGE_MEM));
-    drawBox(xWB, y, boxW, boxH, "写回", isHighlight(STAGE_WB));
+    auto drawArrowV = [&](int x, int yFrom, int yTo, bool highlight) {
+        QColor c = highlight ? highlightColor : lineColor;
+        int dir = (yTo > yFrom) ? 1 : -1;
+        p.setPen(QPen(c, highlight ? 3 : 2));
+        p.drawLine(x, yFrom, x, yTo - dir * 8);
+        QPolygon arrow;
+        arrow << QPoint(x, yTo)
+              << QPoint(x - 6, yTo - dir * 10)
+              << QPoint(x + 6, yTo - dir * 10);
+        p.setBrush(c);
+        p.drawPolygon(arrow);
+    };
 
-    drawArrowH(xPC + boxW, xIF);
-    drawArrowH(xIF + boxW, xID);
-    drawArrowH(xID + boxW, xREG);
-    drawArrowH(xREG + boxW, xEX);
-    drawArrowH(xEX + boxW, xMEM);
+    // 寄存器堆只要被用到（读操作数 或 写回结果）就亮
+    bool regOn = isHighlight(STAGE_REG) || isHighlight(STAGE_WB);
+    bool wb    = isHighlight(STAGE_WB);
+    bool pcWr  = isHighlight(STAGE_PCWR);
 
-    p.setPen(QPen(lineColor, 2));
-    int memCenterX = xMEM + boxW / 2;
-    int wbCenterX = xWB + boxW / 2;
-    int turnY = y + boxH + 30;
-    p.drawLine(memCenterX, y + boxH, memCenterX, turnY);
-    p.drawLine(memCenterX, turnY, wbCenterX, turnY);
-    p.drawLine(wbCenterX, turnY, wbCenterX, y + boxH);
+    // ===== 顶部提示：现在执行的是第几条、哪条指令 =====
+    if (!m_instText.isEmpty()) {
+        p.setPen(QPen(QColor(60, 60, 60), 1));
+        QFont f = p.font(); f.setBold(true); p.setFont(f);
+        p.drawText(marginL, 20, m_instText);
+        f.setBold(false); p.setFont(f);
+    }
 
-    QPolygon arrowV;
-    arrowV << QPoint(wbCenterX, y + boxH)
-           << QPoint(wbCenterX - 6, y + boxH - 10)
-           << QPoint(wbCenterX + 6, y + boxH - 10);
-    p.setBrush(lineColor);
-    p.drawPolygon(arrowV);
+    // ===== 主链路：一行 6 个盒子 =====
+    drawBox(xPC,  "PC",         isHighlight(STAGE_PC));
+    drawBox(xIF,  "指令存储器", isHighlight(STAGE_IF));
+    drawBox(xID,  "译码",       isHighlight(STAGE_ID));
+    drawBox(xREG, "寄存器堆",   regOn);
+    drawBox(xEX,  "ALU",        isHighlight(STAGE_EX));
+    drawBox(xMEM, "数据存储器", isHighlight(STAGE_MEM));
 
+    drawArrowH(xPC  + boxW, xIF,  midY, isHighlight(STAGE_PC)  && isHighlight(STAGE_IF));
+    drawArrowH(xIF  + boxW, xID,  midY, isHighlight(STAGE_IF)  && isHighlight(STAGE_ID));
+    drawArrowH(xID  + boxW, xREG, midY, isHighlight(STAGE_ID)  && regOn);
+    drawArrowH(xREG + boxW, xEX,  midY, regOn                  && isHighlight(STAGE_EX));
+    drawArrowH(xEX  + boxW, xMEM, midY, isHighlight(STAGE_EX)  && isHighlight(STAGE_MEM));
+
+    int xPcC  = xPC  + boxW / 2;
+    int xIdC  = xID  + boxW / 2;
+    int xRegC = xREG + boxW / 2;
+    int xExC  = xEX  + boxW / 2;
+    int xMemC = xMEM + boxW / 2;
+
+    // ===== 写回总线：走盒子下方，从 ALU / 数据存储器 绕回寄存器堆 =====
+    int wbY = y + boxH + 42;
+    bool wbFromMem = wb && isHighlight(STAGE_MEM);   // lw：数据从内存来
+    bool wbFromAlu = wb && !isHighlight(STAGE_MEM);  // 运算类：数据从 ALU 来
+
+    p.setPen(QPen(wbFromAlu ? highlightColor : lineColor, wbFromAlu ? 3 : 2));
+    p.drawLine(xExC, y + boxH, xExC, wbY);           // ALU 下引
+    p.setPen(QPen(wbFromMem ? highlightColor : lineColor, wbFromMem ? 3 : 2));
+    p.drawLine(xMemC, y + boxH, xMemC, wbY);         // 内存下引
+    p.setPen(QPen(wb ? highlightColor : lineColor, wb ? 3 : 2));
+    p.drawLine(xMemC, wbY, xRegC, wbY);              // 横向回流
+    drawArrowV(xRegC, wbY, y + boxH, wb);            // 向上进寄存器堆
     p.setPen(QPen(QColor(100, 100, 100), 1));
-    p.drawText(xIF + 38, y + boxH + 20, "IF");
-    p.drawText(xID + 38, y + boxH + 20, "ID");
-    p.drawText(xREG + 32, y + boxH + 20, "REG");
-    p.drawText(xEX + 38, y + boxH + 20, "EX");
-    p.drawText(xMEM + 32, y + boxH + 20, "MEM");
-    p.drawText(xWB + 38, y + boxH + 20, "WB");
+    p.drawText(xRegC + 10, wbY - 7, "写回");
+
+    // ===== 跳转/分支：走盒子上方，从译码/ALU 绕回 PC（虚线）=====
+    int pcY = y - 32;
+    QColor pcC = pcWr ? highlightColor : lineColor;
+    p.setPen(QPen(pcC, pcWr ? 3 : 2, Qt::DashLine));
+    p.drawLine(xIdC, y, xIdC, pcY);                  // 译码上引
+    p.drawLine(xIdC, pcY, xPcC, pcY);                // 横向回流
+    p.drawLine(xPcC, pcY, xPcC, y - 10);
+    QPolygon pcArrow;
+    pcArrow << QPoint(xPcC, y)
+            << QPoint(xPcC - 6, y - 10)
+            << QPoint(xPcC + 6, y - 10);
+    p.setBrush(pcC);
+    p.setPen(Qt::NoPen);
+    p.drawPolygon(pcArrow);
+    p.setPen(QPen(QColor(100, 100, 100), 1));
+    p.drawText(xIdC - 64, pcY - 6, "跳转/分支");
+
+    // ===== 阶段标注 =====
+    p.setPen(QPen(QColor(130, 130, 130), 1));
+    int tagY = y + boxH + 16;
+    auto tag = [&](int x, const QString& s) {
+        p.drawText(x + (boxW - QFontMetrics(p.font()).horizontalAdvance(s)) / 2, tagY, s);
+    };
+    tag(xIF, "IF");
+    tag(xID, "ID");
+    tag(xREG, "REG");
+    tag(xEX, "EX");
+    tag(xMEM, "MEM");
 }
 
 //MainWindow实现
+
+// 把机器码翻回助记符，给日志和数据通路图上的提示用
+static QString describeInst(u32 inst)
+{
+    if (inst == 0) return "-";
+    u32 op     = bits(inst, 6, 0);
+    int rd     = int(bits(inst, 11, 7));
+    int rs1    = int(bits(inst, 19, 15));
+    int rs2    = int(bits(inst, 24, 20));
+    int funct3 = int(bits(inst, 14, 12));
+    int funct7 = int(bits(inst, 31, 25));
+
+    switch (op) {
+    case Op::OP_IMM: {
+        static const char* n[8] = {"addi","slli","slti","sltiu","xori","srli","ori","andi"};
+        i32 imm = signExtend(bits(inst, 31, 20), 12);
+        return QString("%1 x%2, x%3, %4").arg(n[funct3]).arg(rd).arg(rs1).arg(imm);
+    }
+    case Op::OP: {
+        QString n = (funct3 == 0) ? (funct7 == 0x20 ? "sub" : "add")
+                  : (funct3 == 1) ? "sll" : (funct3 == 4) ? "xor"
+                  : (funct3 == 5) ? "srl" : (funct3 == 6) ? "or"
+                  : (funct3 == 7) ? "and" : "op?";
+        return QString("%1 x%2, x%3, x%4").arg(n).arg(rd).arg(rs1).arg(rs2);
+    }
+    case Op::LUI:
+        return QString("lui x%1, 0x%2").arg(rd).arg(bits(inst, 31, 12), 0, 16);
+    case Op::LOAD: {
+        static const char* n[3] = {"lb","lh","lw"};
+        i32 imm = signExtend(bits(inst, 31, 20), 12);
+        return QString("%1 x%2, %3(x%4)")
+                .arg(funct3 < 3 ? n[funct3] : "load?").arg(rd).arg(imm).arg(rs1);
+    }
+    case Op::STORE: {
+        static const char* n[3] = {"sb","sh","sw"};
+        i32 imm = signExtend((bits(inst,31,25) << 5) | bits(inst,11,7), 12);
+        return QString("%1 x%2, %3(x%4)")
+                .arg(funct3 < 3 ? n[funct3] : "store?").arg(rs2).arg(imm).arg(rs1);
+    }
+    case Op::BRANCH: {
+        i32 imm = signExtend((bits(inst,31,31)<<12) | (bits(inst,7,7)<<11)
+                           | (bits(inst,30,25)<<5) | (bits(inst,11,8)<<1), 13);
+        return QString("%1 x%2, x%3, %4")
+                .arg(funct3 == 0 ? "beq" : funct3 == 1 ? "bne" : "b?")
+                .arg(rs1).arg(rs2).arg(imm);
+    }
+    case Op::JAL: {
+        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1)
+                           | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12), 21);
+        return QString("jal x%1, %2").arg(rd).arg(imm);
+    }
+    default:
+        return QString("未知指令 0x%1").arg(inst, 8, 16, QLatin1Char('0'));
+    }
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), isRunning(false)
@@ -240,6 +357,24 @@ void MainWindow::setupUI()
     btnHelp->setToolTip("查看已实现的指令列表");
     btnHelp->setFixedWidth(90);
 
+    // ===== 运行速度：直接填「每秒几条指令」，比毫秒直观 =====
+    QLabel *speedTip = new QLabel("速度：");
+    speedBox = new QDoubleSpinBox;
+    speedBox->setRange(0.2, 50.0);       // 0.2 条/秒（5 秒一条，超慢）~ 50 条/秒
+    speedBox->setDecimals(1);
+    speedBox->setSingleStep(0.5);
+    speedBox->setValue(2.0);             // 默认 2 条/秒，肉眼舒服
+    speedBox->setSuffix(" 条/秒");
+    speedBox->setFixedWidth(110);
+    speedBox->setToolTip("每秒执行几条指令。填小 = 慢放看灯，填大 = 快速跑完");
+
+    runTimer = new QTimer(this);
+    runTimer->setInterval(500);          // 2 条/秒 = 500ms 一拍
+    connect(runTimer, &QTimer::timeout, this, &MainWindow::onTimerTick);
+    connect(speedBox, &QDoubleSpinBox::valueChanged, this, [this](double ips) {
+        runTimer->setInterval(int(1000.0 / ips));   // 条/秒 → 毫秒，内部换算
+    });
+
     // ===== 创建其他控件 =====
     lblPC = new QLabel("PC: 0x00000000");
     lblPC->setStyleSheet("font-weight: bold; font-size: 12px;");
@@ -300,6 +435,8 @@ void MainWindow::setupUI()
     topBar->addWidget(btnPause);
     topBar->addWidget(btnReset);
     topBar->addWidget(btnHelp);
+    topBar->addWidget(speedTip);
+    topBar->addWidget(speedBox);
     topBar->addStretch();
     topBar->addWidget(lblPC);
 
@@ -339,35 +476,64 @@ void MainWindow::refreshUI()
     }
     lblPC->setText(QString("PC: 0x%1").arg(cpu.pc(), 8, 16, QLatin1Char('0')));
 
+    // 复用已有单元格，不再每拍 new 一堆 QTableWidgetItem（否则界面卡，灯会被跳过）
     for (int i = 0; i < memTable->rowCount(); ++i) {
-        memTable->setItem(i, 1, new QTableWidgetItem(QString("0x%1").arg(cpu.mem().loadWord(i * 4), 8, 16, QLatin1Char('0'))));
+        QString v = QString("0x%1").arg(cpu.mem().loadWord(i * 4), 8, 16, QLatin1Char('0'));
+        if (QTableWidgetItem *it = memTable->item(i, 1)) it->setText(v);
+        else memTable->setItem(i, 1, new QTableWidgetItem(v));
     }
 
     updateDatapath();
+    // 关键：update() 只是「排队重绘」，连续几拍会被 Qt 合并成一次，
+    // 结果就是只看到最后一条指令的灯。repaint() 立刻画完，每一拍都看得见。
+    datapath->repaint();
     statusBar()->showMessage(QString("PC: 0x%1").arg(cpu.pc(), 8, 16, QLatin1Char('0')));
+}
+
+uint32_t MainWindow::datapathMask() const
+{
+    // 按「最近执行的那条指令」的 opcode 决定亮哪些部件
+    u32 op = bits(cpu.inst(), 6, 0);
+    uint32_t m = DatapathWidget::STAGE_PC | DatapathWidget::STAGE_IF | DatapathWidget::STAGE_ID;
+
+    switch (op) {
+    case Op::OP_IMM:
+    case Op::OP:      // 运算类：寄存器堆 + ALU + 写回
+        m |= DatapathWidget::STAGE_REG | DatapathWidget::STAGE_EX | DatapathWidget::STAGE_WB;
+        break;
+    case Op::LUI:     // 高位立即数：直接写回
+        m |= DatapathWidget::STAGE_WB;
+        break;
+    case Op::LOAD:    // 读内存：访存 + 写回
+        m |= DatapathWidget::STAGE_REG | DatapathWidget::STAGE_EX |
+             DatapathWidget::STAGE_MEM | DatapathWidget::STAGE_WB;
+        break;
+    case Op::STORE:   // 写内存：有访存、无写回
+        m |= DatapathWidget::STAGE_REG | DatapathWidget::STAGE_EX | DatapathWidget::STAGE_MEM;
+        break;
+    case Op::BRANCH:  // 分支：只用寄存器堆 + ALU，且可能改写 PC
+        m |= DatapathWidget::STAGE_REG | DatapathWidget::STAGE_EX | DatapathWidget::STAGE_PCWR;
+        break;
+    case Op::JAL:     // 跳转：写返回地址 + 改写 PC
+        m |= DatapathWidget::STAGE_WB | DatapathWidget::STAGE_PCWR;
+        break;
+    default:
+        return 0;     // 不认识就不亮
+    }
+    return m;
 }
 
 void MainWindow::updateDatapath()
 {
-    DatapathWidget::Stage stage = DatapathWidget::STAGE_NONE;
-
-    if (cpu.finished()) {
-        stage = DatapathWidget::STAGE_NONE;
-    } else {
-        uint32_t pc = cpu.pc();
-        int idx = (pc / 4) % 7;
-        switch(idx) {
-        case 0: stage = DatapathWidget::STAGE_PC; break;
-        case 1: stage = DatapathWidget::STAGE_IF; break;
-        case 2: stage = DatapathWidget::STAGE_ID; break;
-        case 3: stage = DatapathWidget::STAGE_REG; break;
-        case 4: stage = DatapathWidget::STAGE_EX; break;
-        case 5: stage = DatapathWidget::STAGE_MEM; break;
-        case 6: stage = DatapathWidget::STAGE_WB; break;
-        }
-    }
-
-    datapath->setHighlightStage(stage);
+    datapath->setHighlightMask(datapathMask());
+    // 图上直接写清「这是第几拍、走的哪条指令」，防止怀疑灯没在变
+    if (cpu.inst() == 0)
+        datapath->setInstText("尚未执行指令");
+    else
+        datapath->setInstText(QString("第 %1 拍：%2   （PC → 0x%3）")
+                                  .arg(tickCount)
+                                  .arg(describeInst(cpu.inst()))
+                                  .arg(cpu.pc(), 8, 16, QLatin1Char('0')));
 }
 
 void MainWindow::loadProgram()
@@ -475,7 +641,9 @@ void MainWindow::onStepClicked()
             return;
         }
         cpu.step();
+        ++tickCount;
         refreshUI();
+        logEdit->append(QString("[%1] %2").arg(tickCount, 3).arg(describeInst(cpu.inst())));
         statusBar()->showMessage("单步执行完成", 2000);
     } catch (const std::exception& e) {
         logEdit->append(QString("✗ 运行时错误：%1").arg(e.what()));
@@ -487,24 +655,44 @@ void MainWindow::onRunClicked()
 {
     if (isRunning) return;
 
+    loadProgram();               // 重新汇编 + 装载（loadProgram 内部已 try/catch）
+    if (cpu.finished()) {        // 什么都没装进去
+        logEdit->append("没有可执行的指令");
+        statusBar()->showMessage("没有可执行的指令", 2000);
+        return;
+    }
+
+    isRunning = true;
+    tickCount = 0;
+    btnRun->setEnabled(false);
+    btnPause->setEnabled(true);
+    btnStep->setEnabled(false);
+    statusBar()->showMessage("正在运行...（灯随指令走）");
+    runTimer->setInterval(int(1000.0 / speedBox->value()));  // 按输入框当前值定拍
+    runTimer->start();           // QTimer 驱动：每拍走一条，界面跟着刷新
+}
+
+void MainWindow::onTimerTick()
+{
     try {
-        loadProgram();
-        isRunning = true;
-        btnRun->setEnabled(false);
-        btnPause->setEnabled(true);
-        btnStep->setEnabled(false);
-        statusBar()->showMessage("正在运行...");
-
-        cpu.run();
-
-        isRunning = false;
-        btnRun->setEnabled(true);
-        btnPause->setEnabled(false);
-        btnStep->setEnabled(true);
-        refreshUI();
-        logEdit->append("✓ 程序执行完成");
-        statusBar()->showMessage("程序执行完成", 3000);
+        if (cpu.finished()) {        // 跑完了，收工
+            runTimer->stop();
+            isRunning = false;
+            btnRun->setEnabled(true);
+            btnPause->setEnabled(false);
+            btnStep->setEnabled(true);
+            refreshUI();
+            logEdit->append(QString("✓ 程序执行完成，共 %1 条").arg(tickCount));
+            statusBar()->showMessage("程序执行完成", 3000);
+            return;
+        }
+        cpu.step();                  // 一次只走一条
+        ++tickCount;
+        refreshUI();                 // 寄存器/内存/数据通路灯一起刷
+        // 每拍都写日志：如果日志里有 N 行，就说明灯确实走了 N 次
+        logEdit->append(QString("[%1] %2").arg(tickCount, 3).arg(describeInst(cpu.inst())));
     } catch (const std::exception& e) {
+        runTimer->stop();
         isRunning = false;
         btnRun->setEnabled(true);
         btnPause->setEnabled(false);
@@ -516,15 +704,21 @@ void MainWindow::onRunClicked()
 
 void MainWindow::onPause()
 {
-    // TODO: 需要修改 CPU 后端支持暂停
-    // 目前 CPU::run() 是同步循环，无法从外部中断
-    logEdit->append("暂停功能需要 CPU 后端支持（待实现）");
-    statusBar()->showMessage("暂停功能待实现", 2000);
+    if (!isRunning) return;
+    runTimer->stop();
+    isRunning = false;
+    btnRun->setEnabled(true);
+    btnPause->setEnabled(false);
+    btnStep->setEnabled(true);
+    logEdit->append("⏸ 已暂停");
+    statusBar()->showMessage("已暂停", 2000);
 }
 
 void MainWindow::onResetClicked()
 {
+    runTimer->stop();
     isRunning = false;
+    tickCount = 0;
     btnRun->setEnabled(true);
     btnPause->setEnabled(false);
     btnStep->setEnabled(true);

@@ -13,6 +13,7 @@ private:
     Memory mem_;
     u32 pc_ = 0;
     u32 progEnd_ = 0;       // 程序结束地址，run() 靠它判断何时停
+    u32 lastInst_ = 0;      // 最近执行的那条指令（界面高亮数据通路用）
 public:
     CPU();
 
@@ -26,6 +27,7 @@ public:
     u32 reg(int n) const { return rf_.read(n); }
     const Memory& mem() const { return mem_; }
     bool finished() const { return pc_ >= progEnd_; }   // 程序是否已执行完
+    u32 inst() const { return lastInst_; }              // 最近执行的一条指令
 
 
 };
