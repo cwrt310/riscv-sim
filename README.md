@@ -20,6 +20,7 @@ RV32I 子集模拟器：读入汇编，逐条取指 / 译码 / 执行，Qt 图�
 | Assembler.* | 汇编文本 ⇆ 机器码 | 汇编器组 |
 | mainwindow.* | 全部 Qt 界面 + 数据通路绘制 | 界面组 |
 | main.cpp + CMakeLists | 入口 + 构建 | 集成负责人 |
+| make_release.sh | 一键发布脚本（编译 → 打包 → zip） | 集成负责人 |
 
 ## 已实现
 
@@ -61,6 +62,7 @@ RV32I 子集模拟器：读入汇编，逐条取指 / 译码 / 执行，Qt 图�
 | 文档（`参考文档/` 下） | 内容 |
 |---|---|
 | `测试手册_斐波那契与指令体检.md` | **界面测试用**：4 个测试程序 + 预期结果 + 灯效对照表（配 `tests/*.asm`） |
+| `发布Release流程.md` | 发版全流程：一键脚本用法、网页发布 6 步、手动排查、坑速查、版本号约定 |
 | `RV32I指令集详解.md` | 指令编码格式（R/I/S/B/U/J）逐条拆解 |
 | `给模拟器加一条指令_andi实例.md` | 「加一条新指令」的完整流程模板 |
 | `学习笔记_CPU与RISC-V基础.md` | CPU 工作原理、PC 语义、符号扩展 |
@@ -105,14 +107,39 @@ cmake --build build
 
 **看灯对不对的自检**：`addi` 亮寄存器堆+ALU；`lw` 多亮数据存储器；`sw` 亮数据存储器但**写回总线不亮**；`beq`/`jal` 上方虚线（PC 回路）变橙。
 
-### 生成可独立分发的 exe（Release + 打包）
+### 发布 Release（一键脚本）
 
-1. Qt Creator 左下角切到 **Release** 编译；
-2. Git Bash 里执行（Qt 装在 E 盘，路径按实际改）：
+> 完整流程（网页发布详解、手动排查、坑速查、版本号约定）见《`参考文档/发布Release流程.md`》。
 
 ```bash
-cd /c/Users/cwrt/Desktop/riscv-sim/build/Desktop_Qt_6_11_2_MinGW_64_bit_Release
-"/e/qt/6.11.2/mingw_64/bin/windeployqt.exe" riscv-sim.exe
+./make_release.sh V2.0
 ```
 
-3. 打包后整个 `..._Release` 目录（exe + Qt DLL + `platforms/`）即可双击运行、分发到没装 Qt 的电脑。
+脚本自动完成三步：**① 编译 Release → ② windeployqt 拷 Qt DLL → ③ 打 zip 到桌面**（`riscv-sim-V2.0-win64.zip`，解压双击 exe 即可运行，不用装 Qt）。最后打印网页发布步骤。
+
+- **首次使用前**：先在 Qt Creator 左下角切到 Release 构建一次，让构建目录生成出来；
+- **换电脑 / Qt 装别处**：不用改脚本，用环境变量覆盖：
+
+```bash
+QT_ROOT=/c/Qt/6.11.2/mingw_64 ./make_release.sh V2.0
+```
+
+脚本跑完后，到 GitHub 网页完成最后一步：`https://github.com/cwrt310/riscv-sim/releases` → **Draft a new release** → tag 填版本号（选 Create new tag on publish）→ 描述写更新内容 → 把桌面 zip 拖进 **Attach binaries** → **Publish release**。
+
+<details>
+<summary>手动流程（脚本背后的原理，排查用）</summary>
+
+```bash
+# ① 编译 Release（用 Qt Creator 切 Release 也可）
+cmake --build build/Desktop_Qt_6_11_2_MinGW_64_bit_Release
+
+# ② windeployqt：把 Qt DLL 拷到 exe 旁边
+cd build/Desktop_Qt_6_11_2_MinGW_64_bit_Release
+"/e/qt/6.11.2/mingw_64/bin/windeployqt.exe" --no-translations riscv-sim.exe
+
+# ③ 打包（只挑运行必需文件，Windows 自带 tar 支持 zip）
+/c/Windows/System32/tar.exe -a -c -f ~/Desktop/riscv-sim-V2.0-win64.zip \
+    riscv-sim.exe *.dll platforms styles imageformats iconengines networkinformation generic
+```
+
+</details>
