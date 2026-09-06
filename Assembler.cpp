@@ -66,6 +66,31 @@ u32 Assembler::assembleLine(const std::string& line) {
         i32 imm = parseImm(a[2]);
         return (u32(imm) & 0x1F) << 20 | u32(rs1) << 15 | 1u << 12 | u32(rd) << 7 | Op::OP_IMM;
     }
+    if (mnemonic == "srli") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]);
+        i32 imm = parseImm(a[2]);
+        return (u32(imm) & 0x1F) << 20 | u32(rs1) << 15 | 5u << 12 | u32(rd) << 7 | Op::OP_IMM;
+    }
+     if (mnemonic == "sll") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
+        return 0u << 25 | u32(rs2) << 20 | u32(rs1) << 15 | 1u << 12 | u32(rd) << 7 | Op::OP;
+    }
+    if (mnemonic == "xor") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
+        return 0u << 25 | u32(rs2) << 20 | u32(rs1) << 15 | 4u << 12 | u32(rd) << 7 | Op::OP;
+    }
+    if (mnemonic == "srl") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
+        return 0u << 25 | u32(rs2) << 20 | u32(rs1) << 15 | 5u << 12 | u32(rd) << 7 | Op::OP;
+    }
+    if (mnemonic == "or") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
+        return 0u << 25 | u32(rs2) << 20 | u32(rs1) << 15 | 6u << 12 | u32(rd) << 7 | Op::OP;
+    }
+    if (mnemonic == "and") {
+        int rd = regNum(a[0]), rs1 = regNum(a[1]), rs2 = regNum(a[2]);
+        return 0u << 25 | u32(rs2) << 20 | u32(rs1) << 15 | 7u << 12 | u32(rd) << 7 | Op::OP;
+    }
     if (mnemonic == "slti") {
         int rd = regNum(a[0]), rs1 = regNum(a[1]);
         i32 imm = parseImm(a[2]);
