@@ -766,17 +766,17 @@ void MainWindow::onRefreshView()
 void MainWindow::onHelpClicked()
 {
     QMessageBox::information(this, "已实现的指令",
-                             "当前已实现 19 条指令（RV32I 子集）：\n\n"
+                             "当前已实现 25 条指令（RV32I 子集）：\n\n"
                              "【算术】add、sub、addi\n"
-                             "【逻辑】andi、ori、xori\n"
-                             "【移位】slli\n"
+                             "【逻辑】andi、ori、xori、and、or、xor\n"
+                             "【移位】slli、srli、sll、srl\n"
                              "【比较】slti、sltiu\n"
                              "【高位立即数】lui\n"
                              "【分支】beq、bne\n"
                              "【跳转】jal\n"
                              "【访存·读】lw、lb、lh\n"
                              "【访存·写】sw、sb、sh\n\n"
-                             "还没实现：jalr、auipc、sll/srl/sra、slt/sltu、lbu/lhu、blt/bge/bltu/bgeu 等");
+                             "还没实现：jalr、auipc、sra、slt/sltu、lbu/lhu、blt/bge/bltu/bgeu 等");
 }
 
 void MainWindow::onAbout()
