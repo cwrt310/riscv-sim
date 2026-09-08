@@ -26,7 +26,19 @@ const std::unordered_map<std::string, InsnDesc> insnTable = {
     {"lb",{Op::LOAD ,0 ,0 , 'M'}},
     {"sb",{Op::STORE ,0 ,0 , 'S'}},
     {"lh",{Op::LOAD ,1 ,0 , 'M'}},
-    {"sh",{Op::STORE ,1 ,0 , 'S'}}
+    {"sh",{Op::STORE ,1 ,0 , 'S'}},
+
+    {"jalr",    {Op::JALR,  0,0,'I'}},
+    {"auipc",   {Op::AUIPC, 0,0,'I'}},
+    {"sra",     {Op::OP,    5,0,'R'}},
+    {"slt",     {Op::OP,    2,0,'R'}},
+    {"sltu",    {Op::OP,    3,0,'R'}},
+    {"lbu",     {Op::LOAD,  4,0,'I'}},
+    {"lhu",     {Op::LOAD,  5,0,'I'}},
+    {"blt",     {Op::BRANCH,4,0,'B'}},
+    {"bge",     {Op::BRANCH,5,0,'B'}},
+    {"bltu",    {Op::BRANCH,6,0,'B'}},
+    {"bgeu",    {Op::BRANCH,7,0,'B'}}
 };
 
 namespace {
