@@ -36,11 +36,12 @@ namespace {
         case 1: // sll
             cpu.setreg(rd, cpu.reg(rs1) << (cpu.reg(rs2) & 0x1F));
             break;
+
         case 4: // xor
             cpu.setreg(rd, cpu.reg(rs1) ^ cpu.reg(rs2));
             break;
-        case 5: // srl
-            if (funct7 != 0x00) {
+        case 5: // srl / sra  靠 funct7 第 30 位区分
+            if (funct7  != 0x00) {
                 std::cerr << "未实现 sra（算术右移）\n";
                 throw std::runtime_error("unimplemented instruction");
             }
