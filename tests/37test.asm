@@ -14,6 +14,7 @@ ori x10, x1, 0x0FF
 xori x11, x1, -1
 
 # 测试 sll/srl/sra/slli/srli/srai
+# 预期：x3=4, x6=0x3FFFFFFC, x7=0xFFFFFFFC(-4), x8=4, x9=0x7FFFFFF8, x10=0xFFFFFFF8(-8)
 addi x1, x0, 1
 addi x2, x0, 2
 sll x3, x1, x2
@@ -26,6 +27,7 @@ srli x9, x4, 1
 srai x10, x4, 1
 
 # 测试 slt/sltu/slti/sltiu
+# 预期：x3=1, x4=0, x5=0, x6=1, x7=1, x8=0, x9=0, x10=1
 addi x1, x0, -5
 addi x2, x0, 3
 slt x3, x1, x2
@@ -38,9 +40,10 @@ sltiu x9, x1, 3
 sltiu x10, x2, -5
 
 # 测试 lui/auipc/jal/jalr/beq/bne/blt/bge/bltu/bgeu
+# 预期（跳转都成立，被跳过的 addi 不执行）：x5=1, x7=1, x10=1, x13=1, x16=1, x19=1, x22=1, x25=1
 lui x1, 0x12345
 auipc x2, 0x10000
-addi x3, x0, 32
+addi x3, x0, 164    # jalr 目标 = 下方第 2 条（跳过 addi x7,0），原来 32 会跳回文件开头死循环
 jal x4, 8
 addi x5, x0, 0
 addi x5, x0, 1
@@ -77,9 +80,9 @@ addi x24, x0, -1
 bgeu x24, x23, 8
 addi x25, x0, 0
 addi x25, x0, 1
-jal x0, 0
 
 # 测试 lb/lh/lw/lbu/lhu/sb/sh/sw
+# 预期：x3=0xFFFFFF80(lb符号扩展), x4=0x00000080(lbu零扩展), x5=0x00000080(lh), x6=0x00000080(lhu), x7=0x12345678(lw)
 addi x30, x0, 0x100
 addi x1, x0, 0x80
 sb x1, 0(x30)
