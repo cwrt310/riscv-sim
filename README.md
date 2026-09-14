@@ -24,20 +24,21 @@ RV32I 子集模拟器：读入汇编，逐条取指 / 译码 / 执行，Qt 图�
 
 ## 已实现
 
-**指令（25 条，全部测试通过）**：
+**指令（37 条，RV32I 全集，不含 fence/ecall/ebreak）**：
 
 | 类别 | 指令 |
 |---|---|
 | 算术 | `add` `sub` `addi` |
 | 逻辑 | `andi` `ori` `xori` `and` `or` `xor` |
-| 移位 | `slli` `srli` `sll` `srl` |
-| 比较 | `slti` `sltiu` |
-| 高位立即数 | `lui` |
-| 分支 | `beq` `bne` |
-| 跳转 | `jal` |
-| 访存·读 | `lw` `lb` `lh` |
+| 移位 | `slli` `srli` `srai` `sll` `srl` `sra` |
+| 比较 | `slti` `sltiu` `slt` `sltu` |
+| 高位立即数 | `lui` `auipc` |
+| 分支 | `beq` `bne` `blt` `bge` `bltu` `bgeu` |
+| 跳转 | `jal` `jalr` |
+| 访存·读 | `lw` `lb` `lh` `lbu` `lhu` |
 | 访存·写 | `sw` `sb` `sh` |
 
+> 3 + 6 + 6 + 4 + 2 + 6 + 2 + 5 + 3 = **37 条**。`fence`/`ecall`/`ebreak` 归 V3.5 特权层，不计入。
 
 **测试程序**：斐波那契 F(10)=55 循环程序已跑通（源码在 `tests/workload.txt`，运行后 x2=34、x3=55）。
 
@@ -48,12 +49,12 @@ RV32I 子集模拟器：读入汇编，逐条取指 / 译码 / 执行，Qt 图�
 - **状态展示**：寄存器表（x0~x31）、内存表（随程序大小动态）、PC 标签、逐条执行日志；
 - **数据通路可视化**：6 个部件一行排开，按当前指令的 opcode 高亮实际用到的部件，写回总线与 PC 跳转回路分层绘制；运行时 QTimer 逐条推进，灯效逐条可见。
 
-> **完成人**：指令集 + 汇编器 + 斐波那契测试 + 界面框架由**架构负责人**完成；队友贡献 UI 类重构（PR #2）。
+> **完成人**：指令集 + 汇编器 + 斐波那契测试 + 界面框架由**架构负责人**完成；队友贡献 UI 类重构（PR #2）、位运算指令（PR #4）、新指令（PR #7/#8）。
 
 ## 待补
 
-- **CPU.cpp**：`jalr`、`auipc`、`sra`、`slt/sltu`、`lbu/lhu`、`blt/bge/bltu/bgeu`
-- **Assembler.cpp**：标签跳转（`loop:`）、伪指令（`mv` / `li` / `j` / `nop`）、`sll/srl/or/and/xor/srli` 同步
+- **Assembler.cpp**：标签跳转（`loop:`）、伪指令（`mv` / `li` / `j` / `nop` / `not` / `neg` / `beqz`）
+- **特权层**（V3.5）：`ecall` / `mret` / CSR 寄存器，跑最小内核
 - **界面**：流水线动画（加分项，需先改成多周期/流水线模型）
 
 ## 文档导航

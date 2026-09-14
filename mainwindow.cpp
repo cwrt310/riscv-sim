@@ -766,17 +766,17 @@ void MainWindow::onRefreshView()
 void MainWindow::onHelpClicked()
 {
     QMessageBox::information(this, "已实现的指令",
-                             "当前已实现 25 条指令（RV32I 子集）：\n\n"
+                             "当前已实现 37 条指令（RV32I 全集）：\n\n"
                              "【算术】add、sub、addi\n"
                              "【逻辑】andi、ori、xori、and、or、xor\n"
-                             "【移位】slli、srli、sll、srl\n"
-                             "【比较】slti、sltiu\n"
-                             "【高位立即数】lui\n"
-                             "【分支】beq、bne\n"
-                             "【跳转】jal\n"
-                             "【访存·读】lw、lb、lh\n"
+                             "【移位】slli、srli、srai、sll、srl、sra\n"
+                             "【比较】slti、sltiu、slt、sltu\n"
+                             "【高位立即数】lui、auipc\n"
+                             "【分支】beq、bne、blt、bge、bltu、bgeu\n"
+                             "【跳转】jal、jalr\n"
+                             "【访存·读】lw、lb、lh、lbu、lhu\n"
                              "【访存·写】sw、sb、sh\n\n"
-                             "还没实现：jalr、auipc、sra、slt/sltu、lbu/lhu、blt/bge/bltu/bgeu 等");
+                             "还没实现：ecall、ebreak、fence（V3.5 特权层）");
 }
 
 void MainWindow::onAbout()
@@ -785,7 +785,7 @@ void MainWindow::onAbout()
                        "<h2>RISC-V 模拟器</h2>"
                        "<p>版本：1.0.0</p>"
                        "<p>基于 Qt 6 开发的 RISC-V 32I 指令集模拟器</p>"
-                       "<p>支持 RV32I 基础指令集（25 条指令）</p>"
+                       "<p>支持 RV32I 基础指令集（37 条指令）</p>"
                        "<p>项目地址：<a href='https://github.com'>GitHub</a></p>"
                        "<p><i>用于计算机组成原理课程学习</i></p>");
 }
