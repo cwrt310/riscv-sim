@@ -11,8 +11,14 @@ namespace {
         case 1: cpu.setreg(rd, cpu.reg(rs1) << (imm & 0x1F)); break; // slli
         case 2: cpu.setreg(rd, ((i32)cpu.reg(rs1) < imm) ? 1 : 0); break; // slti
         case 3: cpu.setreg(rd, (cpu.reg(rs1) < u32(imm)) ? 1 : 0); break; // sltiu
-        case 4: cpu.setreg(rd, cpu.reg(rs1) ^ imm); break;   // xori   
-        case 5: cpu.setreg(rd, cpu.reg(rs1) >> (imm & 0x1F)); break; // srli
+        case 4: cpu.setreg(rd, cpu.reg(rs1) ^ imm); break;   // xori
+        case 5:
+            if(bits(imm,11,5) == 0x00 ){
+                cpu.setreg(rd, u32(cpu.reg(rs1)) >> u32(imm & 0x1F)); /*srli*/
+            }else{
+                cpu.setreg(rd, signExtend(32-u32(imm & 0x1f) , u32(cpu.reg(rs1)) >> u32(imm & 0x1f)) );   /*srai*/
+            }
+            break;
         case 6: cpu.setreg(rd, cpu.reg(rs1) | imm); break;   // ori 
         case 7: cpu.setreg(rd, cpu.reg(rs1) & imm); break;   // andi
         default:
@@ -36,16 +42,22 @@ namespace {
         case 1: // sll
             cpu.setreg(rd, cpu.reg(rs1) << (cpu.reg(rs2) & 0x1F));
             break;
+        case 2: /*slt*/
+            cpu.setreg(rd, (cpu.reg(rs1) < cpu.reg(rs2)) ? 1:0);
+            break;
+        case 3: /*sltu*/
+            cpu.setreg(rd, (u32(cpu.reg(rs1)) < u32(cpu.reg(rs2))) ? 1:0);
+            break;
 
         case 4: // xor
             cpu.setreg(rd, cpu.reg(rs1) ^ cpu.reg(rs2));
             break;
         case 5: // srl / sra  靠 funct7 第 30 位区分
-            if (funct7  != 0x00) {
-                std::cerr << "未实现 sra（算术右移）\n";
-                throw std::runtime_error("unimplemented instruction");
+            if (funct7  == 0x00) {
+                cpu.setreg(rd, u32(cpu.reg(rs1)) >> u32(cpu.reg(rs2) & 0x1F));  /*srl zero extend*/
+            }else{
+                cpu.setreg(rd, signExtend(cpu.reg(rs1) >> u32(cpu.reg(rs2) & 0x1F) , 32 - u32(cpu.reg(rs2) & 0x1F) ) );
             }
-            cpu.setreg(rd, cpu.reg(rs1) >> (cpu.reg(rs2) & 0x1F));
             break;
         case 6: // or
             cpu.setreg(rd, cpu.reg(rs1) | cpu.reg(rs2));
@@ -62,6 +74,27 @@ namespace {
         int rd = int(bits(inst, 11, 7));
         u32 imm = inst & 0xFFFFF000u;
         cpu.setreg(rd, imm);
+    }
+    void executeAUIPC(CPU& cpu, u32 inst){
+        int rd = int(bits(inst, 11, 7));
+        u32 imm = inst & 0xFFFFF000u;
+        cpu.setreg(rd,cpu.pc()+imm);
+    }
+
+    void executeJAL(CPU& cpu, u32 inst) {
+        int rd = int(bits(inst, 11, 7));
+        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1)
+                           | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12), 21);
+        cpu.setreg(rd, cpu.pc());
+        cpu.setpc(cpu.pc() - 4 + imm);
+    }
+    void executeJALR(CPU& cpu, u32 inst) {
+        int rd = int(bits(inst, 11, 7));
+        int rs1    = int(bits(inst, 19, 15));
+        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1)
+                           | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12), 21);
+        cpu.setreg(rd, cpu.pc()+1);
+        cpu.setpc(cpu.reg(rs1)+ imm);
     }
     void executeBRANCH(CPU& cpu, u32 inst) {
         int rs1 = int(bits(inst, 19, 15));
@@ -80,13 +113,7 @@ namespace {
         if (takeBranch)
             cpu.setpc(cpu.pc() - 4 + imm);
     }
-    void executeJAL(CPU& cpu, u32 inst) {
-        int rd = int(bits(inst, 11, 7));
-        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1)
-                           | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12), 21);
-        cpu.setreg(rd, cpu.pc());
-        cpu.setpc(cpu.pc() - 4 + imm);
-    }
+
     void executeLOAD(CPU& cpu, u32 inst) {
         int rd = int(bits(inst, 11, 7));
         int rs1 = int(bits(inst, 19, 15));
@@ -102,6 +129,13 @@ namespace {
             break;
         case 2: // lw
             cpu.setreg(rd, cpu.getmem().loadWord(addr));
+            break;
+
+        case 4: /*lbu*/
+            cpu.setreg(rd, u32(cpu.getmem().loadByte(addr)));
+            break;
+        case 5: /*lhu*/
+            cpu.setreg(rd, u32(cpu.getmem().loadHalf(addr)));
             break;
         default:
             std::cerr << "未实现的 LOAD funct3=" << funct3 << "\n";
