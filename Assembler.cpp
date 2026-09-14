@@ -69,6 +69,8 @@ namespace {
     }
 
     u32 encodeI(const InsnDesc& desc,int rd,int rs1,i32 imm){
+        if (imm < -2048 || imm > 2047)     // 12 位有符号数的范围
+            throw std::runtime_error("立即数超出范围 [-2048, 2047]");
         return (u32(imm) & 0xFFF) << 20 | (u32(rs1) << 15) | (u32(desc.funct3 << 12)) | (u32(rd) << 7) | desc.opcode;
     }
     u32 encodeB(const InsnDesc& desc,int rs1,int rs2,i32 imm){
