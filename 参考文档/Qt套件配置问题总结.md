@@ -15,8 +15,8 @@
 
 | # | 现象 | 原因 | 解决 |
 |---|---|---|---|
-| 1 | 编译器页：MinGW 条目无效 | 把**调试器 `gdb.exe`** 填进了 C/C++ 编译器两栏 | 改成 `gcc.exe` / `g++.exe` |
-| 2 | Qt 版本页报红：*No compiler can produce code for this Qt version* | 编译器 ABI 是 msvc2022，和 Qt 要的 msys/mingw 不匹配 | 见 #5 |
+| 1 | Qt打开项目报错：*No compiler can produce code for this Qt version* | 编译器 ABI 是 msvc2022，和 Qt 要的 msys/mingw 不匹配 | 见 #5 |
+| 2 | 编译器页：MinGW 条目无效 | 把**调试器 `gdb.exe`** 填进了 C/C++ 编译器两栏 | 改成 `gcc.exe` / `g++.exe` |
 | 3 | 套件里 CMake Tool = None | CMake 要在左侧单独的「CMake」页添加，不会自动有 | 添加 `D:\QT\Tools\CMake_64\bin\cmake.exe` |
 | 4 | 套件的 Qt 版本 = 「无」 | 没选 | 下拉选 `Qt 6.11.2 (mingw_64)` |
 | 5 | 都选了还是黄 | `Provide manually` 勾着，ABI 仍手动指成 **msvc2022** | 去掉勾让 ABI 自动识别，或手动改 mingw/msys |
