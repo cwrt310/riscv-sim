@@ -11,6 +11,7 @@ const std::unordered_map<std::string, InsnDesc> insnTable = {
     {"bne",  {Op::BRANCH, 1, 0, 'B'}},
     {"slli", {Op::OP_IMM, 1, 0, 'I'}},
     {"srli", {Op::OP_IMM, 5, 0, 'I'}},
+    {"srai", {Op::OP_IMM, 5, 0x20, 'I'}},
     {"sll",  {Op::OP,     1, 0, 'R'}},
     {"xor",  {Op::OP,     4, 0, 'R'}},
     {"srl",  {Op::OP,     5, 0, 'R'}},
@@ -28,13 +29,13 @@ const std::unordered_map<std::string, InsnDesc> insnTable = {
     {"lh",{Op::LOAD ,1 ,0 , 'M'}},
     {"sh",{Op::STORE ,1 ,0 , 'S'}},
 
-    {"jalr",    {Op::JALR,  0,0,'I'}},
-    {"auipc",   {Op::AUIPC, 0,0,'I'}},
-    {"sra",     {Op::OP,    5,0,'R'}},
+    {"jalr",    {Op::JALR,  0,0,'M'}},
+    {"auipc",   {Op::AUIPC, 0,0,'U'}},
+    {"sra",     {Op::OP,    5,0x20,'R'}},
     {"slt",     {Op::OP,    2,0,'R'}},
     {"sltu",    {Op::OP,    3,0,'R'}},
-    {"lbu",     {Op::LOAD,  4,0,'I'}},
-    {"lhu",     {Op::LOAD,  5,0,'I'}},
+    {"lbu",     {Op::LOAD,  4,0,'M'}},
+    {"lhu",     {Op::LOAD,  5,0,'M'}},
     {"blt",     {Op::BRANCH,4,0,'B'}},
     {"bge",     {Op::BRANCH,5,0,'B'}},
     {"bltu",    {Op::BRANCH,6,0,'B'}},
@@ -71,7 +72,9 @@ namespace {
     u32 encodeI(const InsnDesc& desc,int rd,int rs1,i32 imm){
         if (imm < -2048 || imm > 2047)     // 12 位有符号数的范围
             throw std::runtime_error("立即数超出范围 [-2048, 2047]");
-        return (u32(imm) & 0xFFF) << 20 | (u32(rs1) << 15) | (u32(desc.funct3 << 12)) | (u32(rd) << 7) | desc.opcode;
+        // funct7 占立即数的高 7 位（bits 31:25）——srai 等移位指令用，普通 I 型 funct7=0 不受影响
+        u32 u = (u32(imm) & 0xFFF) | (u32(desc.funct7 & 0x7F) << 5);
+        return u << 20 | (u32(rs1) << 15) | (u32(desc.funct3 << 12)) | (u32(rd) << 7) | desc.opcode;
     }
     u32 encodeB(const InsnDesc& desc,int rs1,int rs2,i32 imm){
         u32 u =u32(imm);

@@ -392,6 +392,36 @@ QString::number(insn_table.size())    // 表有多少行就是多少条，永远
 > ⚠️ **骨架必须组长先做完并合入 main**，其他人再基于新结构补指令。
 > 否则大家还是在改同一个函数，冲突照旧。
 
+### 6.1 新指令编码速查表（补指令时照抄，别自己猜）
+
+> 2026-09-12 补：队友补 11 条指令时 5 处填错（`jalr`/`auipc` 的 format、`sra` 的 funct7、`lbu`/`lhu` 的 format）——根因是"分工给了、正确值没给"。这张表就是"照着填就对的答案"。
+
+| 指令 | opcode | funct3 | funct7 | format | 备注 |
+|---|---|---|---|---|---|
+| `jalr` | `Op::JALR` | 0 | 0 | **`M`** | 语法 `jalr rd, imm(rs1)` 带括号 |
+| `auipc` | `Op::AUIPC` | 0 | 0 | **`U`** | U 型，和 `lui` 同款 |
+| `sra` | `Op::OP` | 5 | **`0x20`** | `R` | 和 `srl` 的唯一区别就是 funct7 |
+| `slt` | `Op::OP` | 2 | 0 | `R` | 有符号比较 |
+| `sltu` | `Op::OP` | 3 | 0 | `R` | 无符号比较 |
+| `lbu` | `Op::LOAD` | 4 | 0 | **`M`** | 带括号，无符号（零扩展） |
+| `lhu` | `Op::LOAD` | 5 | 0 | **`M`** | 带括号，无符号 |
+| `blt` | `Op::BRANCH` | 4 | 0 | `B` | 有符号 < |
+| `bge` | `Op::BRANCH` | 5 | 0 | `B` | 有符号 ≥ |
+| `bltu` | `Op::BRANCH` | 6 | 0 | `B` | 无符号 < |
+| `bgeu` | `Op::BRANCH` | 7 | 0 | `B` | 无符号 ≥ |
+
+**三个最容易错的点（踩坑速记）**：
+
+1. **`format` 看语法不看 opcode**：`lbu`/`lhu`/`jalr` 虽然编码格式各异，但汇编语法都带括号 → `'M'`；`auipc` 虽然名字带"立即数"，但和 `lui` 一样是 U 型 → `'U'`。
+2. **`sra` 和 `srl` 只差 funct7**：`srl` funct7=0x00，`sra` funct7=0x20。填反了就把算术右移编成逻辑右移。
+3. **有符号/无符号成对出现**：`slt`/`sltu`、`blt`/`bltu`、`bge`/`bgeu`——带 `u` 的是无符号，funct3 相邻。
+
+**CPU 侧对应改动**（加指令三件套的另外两件，队友容易漏）：
+- `executeOP` 补 `slt`(case 2)/`sltu`(case 3)/`sra`(case 5 的 funct7==0x20 分支)
+- `executeBRANCH` 补 `blt/bge/bltu/bgeu`(case 4/5/6/7)
+- `executeLOAD` 补 `lbu/lhu`(case 4/5，零扩展)
+- `jalr`/`auipc` 新建算子 + `initHandlers()` 里登记 `handlers[Op::JALR]`/`handlers[Op::AUIPC]`
+
 ---
 
 ## 七、常见问题

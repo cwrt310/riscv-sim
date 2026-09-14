@@ -13,11 +13,10 @@ namespace {
         case 3: cpu.setreg(rd, (cpu.reg(rs1) < u32(imm)) ? 1 : 0); break; // sltiu
         case 4: cpu.setreg(rd, cpu.reg(rs1) ^ imm); break;   // xori
         case 5:
-            if(bits(imm,11,5) == 0x00 ){
-                cpu.setreg(rd, u32(cpu.reg(rs1)) >> u32(imm & 0x1F)); /*srli*/
-            }else{
-                cpu.setreg(rd, signExtend(32-u32(imm & 0x1f) , u32(cpu.reg(rs1)) >> u32(imm & 0x1f)) );   /*srai*/
-            }
+            if (bits(imm, 11, 5) == 0x00)          // srli：逻辑右移（funct7=0x00）
+                cpu.setreg(rd, cpu.reg(rs1) >> (imm & 0x1F));
+            else                                    // srai：算术右移（funct7=0x20）
+                cpu.setreg(rd, u32((i32)cpu.reg(rs1) >> (imm & 0x1F)));
             break;
         case 6: cpu.setreg(rd, cpu.reg(rs1) | imm); break;   // ori 
         case 7: cpu.setreg(rd, cpu.reg(rs1) & imm); break;   // andi
@@ -43,7 +42,7 @@ namespace {
             cpu.setreg(rd, cpu.reg(rs1) << (cpu.reg(rs2) & 0x1F));
             break;
         case 2: /*slt*/
-            cpu.setreg(rd, (cpu.reg(rs1) < cpu.reg(rs2)) ? 1:0);
+            cpu.setreg(rd, ((i32)cpu.reg(rs1) < (i32)cpu.reg(rs2)) ? 1 : 0);
             break;
         case 3: /*sltu*/
             cpu.setreg(rd, (u32(cpu.reg(rs1)) < u32(cpu.reg(rs2))) ? 1:0);
@@ -53,11 +52,10 @@ namespace {
             cpu.setreg(rd, cpu.reg(rs1) ^ cpu.reg(rs2));
             break;
         case 5: // srl / sra  靠 funct7 第 30 位区分
-            if (funct7  == 0x00) {
-                cpu.setreg(rd, u32(cpu.reg(rs1)) >> u32(cpu.reg(rs2) & 0x1F));  /*srl zero extend*/
-            }else{
-                cpu.setreg(rd, signExtend(cpu.reg(rs1) >> u32(cpu.reg(rs2) & 0x1F) , 32 - u32(cpu.reg(rs2) & 0x1F) ) );
-            }
+            if (funct7 == 0x00)     // srl：逻辑右移
+                cpu.setreg(rd, cpu.reg(rs1) >> (cpu.reg(rs2) & 0x1F));
+            else                     // sra：算术右移
+                cpu.setreg(rd, u32((i32)cpu.reg(rs1) >> (cpu.reg(rs2) & 0x1F)));
             break;
         case 6: // or
             cpu.setreg(rd, cpu.reg(rs1) | cpu.reg(rs2));
@@ -78,7 +76,7 @@ namespace {
     void executeAUIPC(CPU& cpu, u32 inst){
         int rd = int(bits(inst, 11, 7));
         u32 imm = inst & 0xFFFFF000u;
-        cpu.setreg(rd,cpu.pc()+imm);
+        cpu.setreg(rd, cpu.pc() - 4 + imm);   // 执行时 pc 已 +4，需 -4 回本指令地址
     }
 
     void executeJAL(CPU& cpu, u32 inst) {
@@ -89,12 +87,11 @@ namespace {
         cpu.setpc(cpu.pc() - 4 + imm);
     }
     void executeJALR(CPU& cpu, u32 inst) {
-        int rd = int(bits(inst, 11, 7));
-        int rs1    = int(bits(inst, 19, 15));
-        i32 imm = signExtend((bits(inst,31,31)<<20) | (bits(inst,30,21)<<1)
-                           | (bits(inst,20,20)<<11) | (bits(inst,19,12)<<12), 21);
-        cpu.setreg(rd, cpu.pc()+1);
-        cpu.setpc(cpu.reg(rs1)+ imm);
+        int rd  = int(bits(inst, 11, 7));
+        int rs1 = int(bits(inst, 19, 15));
+        i32 imm = signExtend(bits(inst, 31, 20), 12);   // jalr 是 I 型，不是 J 型！
+        cpu.setreg(rd, cpu.pc());                        // 返回地址 = 下一条指令
+        cpu.setpc((cpu.reg(rs1) + imm) & ~1u);           // 目标 = rs1+imm，清最低位（2 字节对齐）
     }
     void executeBRANCH(CPU& cpu, u32 inst) {
         int rs1 = int(bits(inst, 19, 15));
@@ -106,6 +103,10 @@ namespace {
         switch (funct3) {
         case 0: takeBranch = (cpu.reg(rs1) == cpu.reg(rs2)); break; // beq
         case 1: takeBranch = (cpu.reg(rs1) != cpu.reg(rs2)); break; // bne
+        case 4: takeBranch = ((i32)cpu.reg(rs1) <  (i32)cpu.reg(rs2)); break; // blt
+        case 5: takeBranch = ((i32)cpu.reg(rs1) >= (i32)cpu.reg(rs2)); break; // bge
+        case 6: takeBranch = (cpu.reg(rs1) <  cpu.reg(rs2)); break;           // bltu
+        case 7: takeBranch = (cpu.reg(rs1) >= cpu.reg(rs2)); break;           // bgeu
         default:
             std::cerr << "未实现的 BRANCH funct3=" << funct3 << "\n";
             throw std::runtime_error("unimplemented instruction");
@@ -178,8 +179,10 @@ void CPU::initHandlers() {
     handlers[Op::OP_IMM] = executeOP_IMM;
     handlers[Op::OP]     = executeOP;
     handlers[Op::LUI]    = executeLUI;
+    handlers[Op::AUIPC]  = executeAUIPC;
     handlers[Op::BRANCH] = executeBRANCH;
     handlers[Op::JAL]    = executeJAL;
+    handlers[Op::JALR]   = executeJALR;
     handlers[Op::LOAD]   = executeLOAD;
     handlers[Op::STORE]  = executeSTORE;
 }
